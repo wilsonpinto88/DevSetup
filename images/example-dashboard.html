@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Actions Remove PSR Filter — Performance Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/highcharts@11/highcharts.js"></script>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 2rem; background: #0f1117; color: #e6e6e6; }
+  .cards { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 2rem; }
+  .card { background: #1a1d27; border-radius: 8px; padding: 1rem 1.5rem; min-width: 160px; }
+  .card h3 { margin: 0 0 .25rem; font-size: .85rem; color: #9aa0ab; font-weight: 500; }
+  .card p { margin: 0; font-size: 1.6rem; font-weight: 700; }
+  .charts-row { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+  .charts-row > div { flex: 1 1 380px; background: #1a1d27; border-radius: 8px; min-width: 0; }
+  .chart-full { background: #1a1d27; border-radius: 8px; }
+</style>
+</head>
+<body>
+  <h1>Actions Remove PSR Filter — Performance Dashboard</h1>
+  <p>Completed 2026-07-17 · Plan: 2026-07-13-actions-remove-psr-filter-plan.md</p>
+
+  <div class="cards">
+    <div class="card"><h3>Total Estimate</h3><p>20h</p></div>
+    <div class="card"><h3>Delivered</h3><p>20h</p></div>
+    <div class="card"><h3>Elapsed Capacity</h3><p>16h</p></div>
+    <div class="card"><h3>Final Pace Ratio</h3><p>1.25 🚀 Ahead</p></div>
+  </div>
+
+  <div class="charts-row">
+    <div id="donutChart" style="height:380px;"></div>
+    <div id="phaseChart" style="height:380px;"></div>
+  </div>
+  <div class="chart-full" id="paceChart" style="height:380px;"></div>
+
+  <script type="application/json" id="feature-metrics">
+  {
+    "totals": { "estimate": 20, "delivered": 20, "elapsedCapacity": 16 },
+    "phases": [
+      { "name": "Phase 1 — Backend cleanup", "estimate": 8, "delivered": 8, "color": "#5b8def" },
+      { "name": "Phase 2 — UI removal", "estimate": 6, "delivered": 6, "color": "#3ecf8e" },
+      { "name": "Phase 3 — Tests & QA", "estimate": 6, "delivered": 6, "color": "#f2994a" }
+    ],
+    "tasks": [
+      { "phase": "Phase 1 — Backend cleanup", "name": "Remove PSR service calls", "estimate": 4, "color": "#5b8def" },
+      { "phase": "Phase 1 — Backend cleanup", "name": "Clean up controller params", "estimate": 4, "color": "#7ea5f2" },
+      { "phase": "Phase 2 — UI removal", "name": "Remove dropdown component", "estimate": 3, "color": "#2dd4bf" },
+      { "phase": "Phase 2 — UI removal", "name": "Update layout/styles", "estimate": 3, "color": "#6fe0ac" },
+      { "phase": "Phase 3 — Tests & QA", "name": "Update unit tests", "estimate": 3, "color": "#f2994a" },
+      { "phase": "Phase 3 — Tests & QA", "name": "Manual QA pass", "estimate": 3, "color": "#f7b878" }
+    ],
+    "paceOverTime": [
+      { "timestamp": "07-14 10:00", "delivered": 4, "paceRatio": 1.0 },
+      { "timestamp": "07-14 15:00", "delivered": 4, "paceRatio": 1.1 },
+      { "timestamp": "07-15 12:00", "delivered": 3, "paceRatio": 1.05 },
+      { "timestamp": "07-16 11:00", "delivered": 6, "paceRatio": 1.18 },
+      { "timestamp": "07-17 16:00", "delivered": 3, "paceRatio": 1.25 }
+    ]
+  }
+  </script>
+
+  <script>
+    const data = JSON.parse(document.getElementById('feature-metrics').textContent);
+
+    Highcharts.setOptions({
+      chart: { backgroundColor: '#1a1d27', style: { fontFamily: 'system-ui, sans-serif' } },
+      title: { style: { color: '#e6e6e6' } },
+      subtitle: { style: { color: '#9aa0ab' } },
+      xAxis: { labels: { style: { color: '#e6e6e6' } }, lineColor: '#333', tickColor: '#333' },
+      yAxis: { labels: { style: { color: '#e6e6e6' } }, gridLineColor: '#2a2d3a', title: { style: { color: '#9aa0ab' } } },
+      legend: { itemStyle: { color: '#e6e6e6' }, itemHoverStyle: { color: '#fff' } },
+      tooltip: { backgroundColor: '#1a1d27', style: { color: '#e6e6e6' } }
+    });
+
+    // Double-ring donut: inner ring = Total Estimate vs Elapsed Capacity, outer ring = per-task breakdown
+    Highcharts.chart('donutChart', {
+      chart: { type: 'pie' },
+      title: { text: 'Estimate vs Elapsed Capacity — Overall & by Task' },
+      tooltip: { pointFormat: '{series.name}: <b>{point.y}h</b> ({point.percentage:.0f}%)' },
+      plotOptions: { pie: { dataLabels: { enabled: true, style: { color: '#e6e6e6', textOutline: 'none' }, distance: 12 } } },
+      series: [
+        {
+          name: 'Overall',
+          size: '45%',
+          innerSize: '55%',
+          data: [
+            { name: 'Total Estimate', y: data.totals.estimate, color: '#5b8def' },
+            { name: 'Elapsed Capacity', y: data.totals.elapsedCapacity, color: '#3ecf8e' }
+          ],
+          dataLabels: {
+            distance: '-22%',
+            style: { fontSize: '0.75em', fontWeight: '700' },
+            formatter: function () { return this.point.name.split(' ').map(w => w[0]).join(''); }
+          }
+        },
+        {
+          name: 'Task',
+          size: '80%',
+          innerSize: '60%',
+          data: data.tasks.map(t => ({ name: t.name, y: t.estimate, color: t.color }))
+        }
+      ]
+    });
+
+    // Estimate vs Delivered per phase
+    Highcharts.chart('phaseChart', {
+      chart: { type: 'column' },
+      title: { text: 'Estimate vs Delivered per Phase' },
+      xAxis: { categories: data.phases.map(p => p.name) },
+      yAxis: { title: { text: 'Hours' } },
+      series: [
+        { name: 'Estimate (h)', data: data.phases.map(p => p.estimate), color: '#5b8def' },
+        { name: 'Delivered (h)', data: data.phases.map(p => p.delivered), color: '#3ecf8e' }
+      ]
+    });
+
+    // Delivered per checkpoint (bars) + cumulative Pace Ratio (line, secondary axis)
+    Highcharts.chart('paceChart', {
+      chart: { zooming: { type: 'x' } },
+      title: { text: 'Delivered per Checkpoint & Pace Ratio Over Time' },
+      xAxis: { categories: data.paceOverTime.map(p => p.timestamp) },
+      yAxis: [
+        { title: { text: 'Delivered (h)', style: { color: '#5b8def' } } },
+        { title: { text: 'Pace Ratio', style: { color: '#f2c94c' } }, opposite: true, gridLineWidth: 0 }
+      ],
+      series: [
+        { name: 'Delivered (h)', type: 'column', yAxis: 0, color: '#5b8def', data: data.paceOverTime.map(p => p.delivered) },
+        { name: 'Pace Ratio (>1.0 = ahead)', type: 'line', yAxis: 1, color: '#f2c94c', data: data.paceOverTime.map(p => p.paceRatio), marker: { enabled: true } }
+      ]
+    });
+  </script>
+</body>
+</html>

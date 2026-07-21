@@ -1,0 +1,7 @@
+# One global npm package name per line. Lines starting with # are ignored.
+# Examples:
+# typescript
+# eslint
+# prettier
+# pnpm
+# yarn

@@ -1,0 +1,56 @@
+{
+  "env": {
+    "ENABLE_TOOL_SEARCH": "true",
+    "CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING": "1",
+    "CLAUDE_CODE_NO_FLICKER": "1",
+    "CLAUDE_CODE_RATE_LIMIT_ENABLED": "0",
+    "CLAUDE_CODE_CACHE_TTL_MS": "8,64e+7",
+    "CLAUDE_CODE_MODEL_PERF": "predictable",
+    "CLAUDE_CODE_MIN_TPS": "300",
+    "CLAUDE_CODE_NO_NERF": "1",
+    "MAX_THINKING_TOKENS": "128000"
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "powershell -ExecutionPolicy Bypass -File \"C:\\Users\\Wilson.Pinto\\.claude\\plugins\\cache\\caveman\\caveman\\63e797cd753b\\hooks\\caveman-statusline.ps1\""
+  },
+  "enabledPlugins": {
+    "context-mode@context-mode": true,
+    "superpowers-optimized@superpowers-optimized": true,
+    "caveman@caveman": true
+  },
+  "extraKnownMarketplaces": {
+    "caveman": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/JuliusBrussee/caveman.git"
+      }
+    },
+    "context-mode": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/mksglu/context-mode.git"
+      }
+    },
+    "superpowers-optimized": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/REPOZY/superpowers-optimized.git"
+      }
+    }
+  },
+  "effortLevel": "medium",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"C:/nvm4w/nodejs/node.exe\" \"C:/Users/Wilson.Pinto/.claude/hooks/context-mode-cache-heal.mjs\""
+          }
+        ]
+      }
+    ]
+  },
+  "model": "sonnet"
+}
