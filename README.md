@@ -23,7 +23,7 @@ Clone it anywhere -- `C:\dev\DevSetup`, your Desktop, wherever you like. All scr
 - `Scripts\02-Restore-VSCode-Extensions.ps1` – restores VS Code extensions from `vscode-extensions.txt`.
 - `Scripts\03-Install-All.ps1` – restores VS Code extensions, .NET global tools from `dotnet-tools.txt`, NVM/Node (from `node-version.txt`) and global npm packages from `npm-global-packages.txt`. Pass `-IncludeWinget` to also run script 01 as its first step (off by default).
 - `Scripts\04-Restore-Agent-Skills.ps1` -- restores the AI agent environment (Copilot skills/prompts/instructions, Copilot CLI personal instructions, Claude Code CLAUDE.MD/settings, plugins) from `AgentSetup\`.
-- `AgentSetup\` -- snapshot of AI agent config (18 Copilot skills, 22 prompts, instructions, Claude Code CLAUDE.MD/settings). See `AgentSetup\README.md` for details. This is a one-way restore only (repo → machine) -- there's no export script, so update this folder manually if you change your skills/prompts later.
+- `AgentSetup\` -- snapshot of AI agent config (18 Copilot skills, 25 prompts, instructions, Claude Code CLAUDE.MD/settings). See `AgentSetup\README.md` for details. This is a one-way restore only (repo → machine) -- there's no export script, so update this folder manually if you change your skills/prompts later.
 - `node-version.txt` – optional; one line with your Node version (e.g. `20.11.0`) for NVM install via script 03 (requires NVM for Windows already installed -- `winget install -e --id CoreyButler.NVMforWindows`, or run script 01).
 - `npm-global-packages.txt` – optional; one global npm package name per line to install after Node is set up.
 - `installation-progress.log` – created by script 03; append-only log of each step and item (timestamp, status).
