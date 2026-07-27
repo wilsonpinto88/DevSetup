@@ -182,7 +182,7 @@ if (Test-Path $sourceCliInstructions) {
     Write-Host "  [SKIP] No copilot-cli-instructions.md in backup" -ForegroundColor Red
 }
 
-# --- 8. Restore Copilot CLI skills (e.g. graphify) ---
+# --- 8. Restore Copilot CLI skills ---
 Write-Host "[8/8] Restoring .copilot/skills/ ..." -ForegroundColor Yellow
 
 $targetCopilotCliSkills = Join-Path $targetCopilotCliDir "skills"
@@ -197,7 +197,6 @@ if (Test-Path $sourceCopilotSkills) {
         Copy-Item -Path "$($_.FullName)\*" -Destination $targetPath -Recurse -Force
         Write-Host "  [OK] $($_.Name)" -ForegroundColor Green
     }
-    Write-Host "  NOTE: the 'graphify' skill needs the graphifyy Python package (pip install graphifyy) to actually run." -ForegroundColor DarkGray
 } else {
     Write-Host "  [SKIP] No .copilot/skills/ in backup" -ForegroundColor Red
 }
@@ -215,8 +214,7 @@ $checks = @(
     @{ Name = ".claude/skills/"; Path = $targetClaudeSkills },
     @{ Name = "Code/User/prompts/"; Path = $targetPrompts },
     @{ Name = "Code/User/settings.json"; Path = $targetVSCodeSettings },
-    @{ Name = ".copilot/copilot-instructions.md"; Path = $targetCliInstructions },
-    @{ Name = ".copilot/skills/graphify"; Path = "$targetCopilotCliSkills\graphify\SKILL.md" }
+    @{ Name = ".copilot/copilot-instructions.md"; Path = $targetCliInstructions }
 )
 
 foreach ($check in $checks) {

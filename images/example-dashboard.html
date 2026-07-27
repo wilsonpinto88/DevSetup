@@ -2,58 +2,69 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Actions Remove PSR Filter — Performance Dashboard</title>
+<title>Customer Portal App — Performance Dashboard</title>
 <script src="https://cdn.jsdelivr.net/npm/highcharts@11/highcharts.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/highcharts@11/modules/gantt.js"></script>
 <style>
   body { font-family: system-ui, sans-serif; margin: 2rem; background: #0f1117; color: #e6e6e6; }
-  .cards { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 2rem; }
-  .card { background: #1a1d27; border-radius: 8px; padding: 1rem 1.5rem; min-width: 160px; }
+  .top-row { display: flex; gap: 1rem; margin-bottom: 1rem; align-items: stretch; }
+  .cards-col { display: flex; flex-direction: column; gap: 1rem; min-width: 200px; }
+  .card { background: #1a1d27; border-radius: 8px; padding: 1rem 1.5rem; flex: 1; display: flex; flex-direction: column; justify-content: center; }
   .card h3 { margin: 0 0 .25rem; font-size: .85rem; color: #9aa0ab; font-weight: 500; }
   .card p { margin: 0; font-size: 1.6rem; font-weight: 700; }
-  .charts-row { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
-  .charts-row > div { flex: 1 1 380px; background: #1a1d27; border-radius: 8px; min-width: 0; }
-  .chart-full { background: #1a1d27; border-radius: 8px; }
+  .top-row > #donutChart { flex: 1; background: #1a1d27; border-radius: 8px; min-width: 0; }
+  .chart-full { background: #1a1d27; border-radius: 8px; margin-bottom: 1rem; }
 </style>
 </head>
 <body>
-  <h1>Actions Remove PSR Filter — Performance Dashboard</h1>
-  <p>Completed 2026-07-17 · Plan: 2026-07-13-actions-remove-psr-filter-plan.md</p>
+  <h1>Customer Portal App — Performance Dashboard</h1>
+  <p>Started 2026-05-04 · Completed 2026-06-16 (planned end 2026-06-26, ~1.5 weeks early) · Plan: 2026-05-04-customer-portal-app-plan.md</p>
 
-  <div class="cards">
-    <div class="card"><h3>Total Estimate</h3><p>20h</p></div>
-    <div class="card"><h3>Delivered</h3><p>20h</p></div>
-    <div class="card"><h3>Elapsed Capacity</h3><p>16h</p></div>
-    <div class="card"><h3>Final Pace Ratio</h3><p>1.25 🚀 Ahead</p></div>
+  <div class="top-row">
+    <div class="cards-col">
+      <div class="card"><h3>Total Estimate</h3><p>320h</p></div>
+      <div class="card"><h3>Delivered</h3><p>320h</p></div>
+      <div class="card"><h3>Elapsed Capacity</h3><p>256h</p></div>
+      <div class="card"><h3>Final Pace Ratio</h3><p>1.25 🚀 Ahead</p></div>
+    </div>
+    <div id="donutChart" style="height:420px;"></div>
   </div>
 
-  <div class="charts-row">
-    <div id="donutChart" style="height:380px;"></div>
-    <div id="phaseChart" style="height:380px;"></div>
-  </div>
-  <div class="chart-full" id="paceChart" style="height:380px;"></div>
+  <div class="chart-full" id="phaseChart" style="height:420px;"></div>
+  <div class="chart-full" id="ganttChart"></div>
 
   <script type="application/json" id="feature-metrics">
   {
-    "totals": { "estimate": 20, "delivered": 20, "elapsedCapacity": 16 },
+    "totals": { "estimate": 320, "delivered": 320, "elapsedCapacity": 256 },
     "phases": [
-      { "name": "Phase 1 — Backend cleanup", "estimate": 8, "delivered": 8, "color": "#5b8def" },
-      { "name": "Phase 2 — UI removal", "estimate": 6, "delivered": 6, "color": "#3ecf8e" },
-      { "name": "Phase 3 — Tests & QA", "estimate": 6, "delivered": 6, "color": "#f2994a" }
+      { "name": "Phase 1 — Analysis & Planning", "estimate": 24, "delivered": 24, "elapsedCapacity": 19, "color": "#5b8def" },
+      { "name": "Phase 2 — UI/UX Design", "estimate": 40, "delivered": 40, "elapsedCapacity": 32, "color": "#3ecf8e" },
+      { "name": "Phase 3 — Development", "estimate": 176, "delivered": 176, "elapsedCapacity": 141, "color": "#f2994a" },
+      { "name": "Phase 4 — Testing & QA", "estimate": 56, "delivered": 56, "elapsedCapacity": 45, "color": "#a78bfa" },
+      { "name": "Phase 5 — Deployment", "estimate": 24, "delivered": 24, "elapsedCapacity": 19, "color": "#ef4444" }
     ],
     "tasks": [
-      { "phase": "Phase 1 — Backend cleanup", "name": "Remove PSR service calls", "estimate": 4, "color": "#5b8def" },
-      { "phase": "Phase 1 — Backend cleanup", "name": "Clean up controller params", "estimate": 4, "color": "#7ea5f2" },
-      { "phase": "Phase 2 — UI removal", "name": "Remove dropdown component", "estimate": 3, "color": "#2dd4bf" },
-      { "phase": "Phase 2 — UI removal", "name": "Update layout/styles", "estimate": 3, "color": "#6fe0ac" },
-      { "phase": "Phase 3 — Tests & QA", "name": "Update unit tests", "estimate": 3, "color": "#f2994a" },
-      { "phase": "Phase 3 — Tests & QA", "name": "Manual QA pass", "estimate": 3, "color": "#f7b878" }
-    ],
-    "paceOverTime": [
-      { "timestamp": "07-14 10:00", "delivered": 4, "paceRatio": 1.0 },
-      { "timestamp": "07-14 15:00", "delivered": 4, "paceRatio": 1.1 },
-      { "timestamp": "07-15 12:00", "delivered": 3, "paceRatio": 1.05 },
-      { "timestamp": "07-16 11:00", "delivered": 6, "paceRatio": 1.18 },
-      { "timestamp": "07-17 16:00", "delivered": 3, "paceRatio": 1.25 }
+      { "phase": "Phase 1 — Analysis & Planning", "name": "Requirements Gathering", "estimate": 8, "color": "#5b8def", "completed": "2026-05-04T16:00:00" },
+      { "phase": "Phase 1 — Analysis & Planning", "name": "Technical Architecture Design", "estimate": 8, "color": "#7ea5f2", "completed": "2026-05-05T15:00:00" },
+      { "phase": "Phase 1 — Analysis & Planning", "name": "Project Plan & Estimation", "estimate": 8, "color": "#a8c4f7", "completed": "2026-05-06T12:00:00" },
+
+      { "phase": "Phase 2 — UI/UX Design", "name": "Wireframes", "estimate": 12, "color": "#3ecf8e", "completed": "2026-05-07T15:00:00" },
+      { "phase": "Phase 2 — UI/UX Design", "name": "Visual Design & Mockups", "estimate": 16, "color": "#6fe0ac", "completed": "2026-05-11T11:00:00" },
+      { "phase": "Phase 2 — UI/UX Design", "name": "Design Review & Iteration", "estimate": 12, "color": "#a3ecc9", "completed": "2026-05-12T12:00:00" },
+
+      { "phase": "Phase 3 — Development", "name": "Backend API Development", "estimate": 64, "color": "#f2994a", "completed": "2026-05-20T16:00:00" },
+      { "phase": "Phase 3 — Development", "name": "Database Schema & Migrations", "estimate": 24, "color": "#f7b878", "completed": "2026-05-25T11:00:00" },
+      { "phase": "Phase 3 — Development", "name": "Frontend Implementation", "estimate": 64, "color": "#f5a95c", "completed": "2026-06-02T15:00:00" },
+      { "phase": "Phase 3 — Development", "name": "Third-Party Integrations", "estimate": 24, "color": "#fac68a", "completed": "2026-06-04T18:00:00" },
+
+      { "phase": "Phase 4 — Testing & QA", "name": "Unit Tests", "estimate": 16, "color": "#a78bfa", "completed": "2026-06-08T15:00:00" },
+      { "phase": "Phase 4 — Testing & QA", "name": "Integration Tests", "estimate": 16, "color": "#c4b5fd", "completed": "2026-06-10T11:00:00" },
+      { "phase": "Phase 4 — Testing & QA", "name": "Manual QA Pass", "estimate": 16, "color": "#8b6fe0", "completed": "2026-06-11T16:00:00" },
+      { "phase": "Phase 4 — Testing & QA", "name": "Bug Fixes", "estimate": 8, "color": "#d8ccfd", "completed": "2026-06-12T15:00:00" },
+
+      { "phase": "Phase 5 — Deployment", "name": "Staging Deployment", "estimate": 8, "color": "#ef4444", "completed": "2026-06-15T12:00:00" },
+      { "phase": "Phase 5 — Deployment", "name": "Production Deployment", "estimate": 8, "color": "#f87171", "completed": "2026-06-16T11:00:00" },
+      { "phase": "Phase 5 — Deployment", "name": "Post-Deploy Monitoring & Handover", "estimate": 8, "color": "#fca5a5", "completed": "2026-06-16T18:00:00" }
     ]
   }
   </script>
@@ -71,25 +82,26 @@
       tooltip: { backgroundColor: '#1a1d27', style: { color: '#e6e6e6' } }
     });
 
-    // Double-ring donut: inner ring = Total Estimate vs Elapsed Capacity, outer ring = per-task breakdown
+    // Double-ring donut: inner ring = Elapsed Capacity only (a TE-vs-EC comparison can't
+    // live in a donut once EC exceeds TE, since slices must sum to 100% — see estimateChart
+    // below for that comparison). Outer ring = per-task breakdown.
     Highcharts.chart('donutChart', {
       chart: { type: 'pie' },
-      title: { text: 'Estimate vs Elapsed Capacity — Overall & by Task' },
-      tooltip: { pointFormat: '{series.name}: <b>{point.y}h</b> ({point.percentage:.0f}%)' },
+      title: { text: 'Elapsed Capacity & Task Breakdown' },
+      tooltip: { pointFormat: '{series.name}: <b>{point.y}h</b>' },
       plotOptions: { pie: { dataLabels: { enabled: true, style: { color: '#e6e6e6', textOutline: 'none' }, distance: 12 } } },
       series: [
         {
-          name: 'Overall',
+          name: 'Elapsed',
           size: '45%',
           innerSize: '55%',
           data: [
-            { name: 'Total Estimate', y: data.totals.estimate, color: '#5b8def' },
             { name: 'Elapsed Capacity', y: data.totals.elapsedCapacity, color: '#3ecf8e' }
           ],
           dataLabels: {
             distance: '-22%',
             style: { fontSize: '0.75em', fontWeight: '700' },
-            formatter: function () { return this.point.name.split(' ').map(w => w[0]).join(''); }
+            format: 'EC'
           }
         },
         {
@@ -101,31 +113,89 @@
       ]
     });
 
-    // Estimate vs Delivered per phase
+    // Combo chart: Estimate vs Elapsed Capacity per phase (columns) + Pace Ratio per
+    // phase (line, secondary axis).
+    const paceRatios = data.phases.map(p => Math.round((p.estimate / p.elapsedCapacity) * 100) / 100);
     Highcharts.chart('phaseChart', {
-      chart: { type: 'column' },
-      title: { text: 'Estimate vs Delivered per Phase' },
+      title: { text: 'Estimate vs Elapsed Capacity per Phase' },
       xAxis: { categories: data.phases.map(p => p.name) },
-      yAxis: { title: { text: 'Hours' } },
-      series: [
-        { name: 'Estimate (h)', data: data.phases.map(p => p.estimate), color: '#5b8def' },
-        { name: 'Delivered (h)', data: data.phases.map(p => p.delivered), color: '#3ecf8e' }
-      ]
-    });
-
-    // Delivered per checkpoint (bars) + cumulative Pace Ratio (line, secondary axis)
-    Highcharts.chart('paceChart', {
-      chart: { zooming: { type: 'x' } },
-      title: { text: 'Delivered per Checkpoint & Pace Ratio Over Time' },
-      xAxis: { categories: data.paceOverTime.map(p => p.timestamp) },
       yAxis: [
-        { title: { text: 'Delivered (h)', style: { color: '#5b8def' } } },
+        { title: { text: 'Hours', style: { color: '#e6e6e6' } } },
         { title: { text: 'Pace Ratio', style: { color: '#f2c94c' } }, opposite: true, gridLineWidth: 0 }
       ],
       series: [
-        { name: 'Delivered (h)', type: 'column', yAxis: 0, color: '#5b8def', data: data.paceOverTime.map(p => p.delivered) },
-        { name: 'Pace Ratio (>1.0 = ahead)', type: 'line', yAxis: 1, color: '#f2c94c', data: data.paceOverTime.map(p => p.paceRatio), marker: { enabled: true } }
+        { name: 'Estimate (h)', type: 'column', yAxis: 0, data: data.phases.map(p => p.estimate), color: '#5b8def' },
+        { name: 'Elapsed Capacity (h)', type: 'column', yAxis: 0, data: data.phases.map(p => p.elapsedCapacity), color: '#3ecf8e' },
+        {
+          name: 'Pace Ratio (>1.0 = ahead)',
+          type: 'line',
+          yAxis: 1,
+          color: '#f2c94c',
+          data: paceRatios,
+          marker: { enabled: true }
+        }
       ]
+    });
+
+    // Gantt timeline: phases as parent rows, tasks as child bars. Each task's start is
+    // derived as completed-time minus its estimate (no separate "started" timestamp is
+    // tracked per task) — so bar length always equals the task's own estimate, and
+    // position on the timeline reflects when it was actually finished.
+    const phaseIds = data.phases.map((p, i) => ({ ...p, id: 'phase' + i }));
+    // Business-hours-aware backward walk: Mon-Fri, 09:00-18:00, 1h lunch (13:00-14:00).
+    // A naive `end - estimate*3600*1000` subtraction can land a task's start on a
+    // weekend or outside work hours entirely (e.g. subtracting 16h from a Monday
+    // 11:00 completion lands on Sunday 19:00). This walks backward minute-by-minute,
+    // only counting minutes that fall inside the work schedule, so bar starts always
+    // land on a real working moment.
+    function isWorkMinute(date) {
+      const day = date.getDay(); // 0 = Sun, 6 = Sat
+      if (day === 0 || day === 6) return false;
+      const h = date.getHours() + date.getMinutes() / 60;
+      if (h < 9 || h >= 18) return false;
+      if (h >= 13 && h < 14) return false; // lunch
+      return true;
+    }
+    function subtractWorkHours(endMs, hours) {
+      let cursor = new Date(endMs);
+      let remainingMinutes = Math.round(hours * 60);
+      while (remainingMinutes > 0) {
+        cursor = new Date(cursor.getTime() - 60000);
+        if (isWorkMinute(cursor)) remainingMinutes--;
+      }
+      return cursor.getTime();
+    }
+
+    const ganttSeries = [];
+    phaseIds.forEach(p => ganttSeries.push({ id: p.id, name: p.name, collapsed: false }));
+    data.tasks.forEach((t, i) => {
+      const phase = phaseIds.find(p => p.name === t.phase);
+      const end = new Date(t.completed).getTime();
+      const start = subtractWorkHours(end, t.estimate);
+      ganttSeries.push({
+        id: 'task' + i,
+        parent: phase ? phase.id : undefined,
+        name: t.name,
+        start, end,
+        completed: { amount: 1 },
+        color: t.color
+      });
+    });
+
+    Highcharts.ganttChart('ganttChart', {
+      // Height is computed from the actual row count (phases + tasks) rather than a
+      // fixed guess, so every row is always visible without clipping or needing to
+      // scroll/expand, regardless of how many phases or tasks a feature has.
+      chart: { height: 90 + ganttSeries.length * 32 },
+      title: { text: 'Phase & Task Timeline' },
+      subtitle: { text: 'Work schedule: Mon\u2013Fri, 09:00\u201318:00, 1h lunch \u2014 task positions/durations already reflect this' },
+      xAxis: { currentDateIndicator: false },
+      // Bars for individual tasks are often too narrow (a few hours wide on a
+      // multi-week timeline) for the default completion-percentage label to fit
+      // without overlapping the row below it — the color fill already shows
+      // progress, and full detail is still available on hover via tooltip.
+      plotOptions: { gantt: { dataLabels: { enabled: false } } },
+      series: [{ name: 'Feature Timeline', data: ganttSeries, dataLabels: { enabled: false } }]
     });
   </script>
 </body>

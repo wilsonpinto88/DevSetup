@@ -43,15 +43,3 @@ the token budget.
 - Serial tool calls for independent operations that could have been batched.
 - Dumping an entire large file into context when a targeted grep would have found the
   3 relevant lines.
-
-## Related tools
-
-For a large corpus (hundreds of files, or a codebase that gets asked about repeatedly
-across many sessions), consider the `graphify` Copilot CLI skill (`~/.copilot/skills/graphify/`).
-It builds a persistent knowledge graph once, then answers structural/relational
-questions (`graphify query`, `graphify explain`, `graphify path`) from that graph
-instead of re-reading source files each time — the token-efficiency equivalent of
-`project-map.md` (see `context-management`) but for code/doc relationships rather than
-folder structure. Not worth it for a small corpus that already fits in one context
-window (graphify itself flags this via `needs_graph: false` on detection) — use it
-when repeated full-file reads across sessions are the actual cost driver.

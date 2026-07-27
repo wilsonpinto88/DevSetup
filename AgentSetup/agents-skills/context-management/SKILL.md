@@ -38,15 +38,6 @@ At the start of a session, before relying on `project-map.md`:
    new major folders appeared that aren't mentioned.
 2. Only re-explore the parts that changed — don't regenerate the whole map from scratch
    if 90% of it is still accurate.
-
-## Related tools
-
-`project-map.md` is a lightweight, manually-curated folder-structure summary. For deeper
-relational questions ("what depends on X", "how does A connect to B") on a large corpus,
-the `graphify` Copilot CLI skill (`~/.copilot/skills/graphify/`) builds an actual queryable
-knowledge graph with community detection and an audit trail — complementary, not a
-replacement: use `project-map.md` for "where do I find things", use `graphify query`/
-`graphify explain` for "how do these things relate".
 3. Update just the stale sections.
 
 ## Anti-patterns
