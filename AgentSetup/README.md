@@ -33,7 +33,7 @@ Backup (tracked in this git repo -- survives format, portable to any machine):
       claude\CLAUDE.MD
       claude\settings.json
       claude\skills\explore-codebase.md
-      copilot\prompts\<22 *.prompt.md files>
+      copilot\prompts\<25 *.prompt.md files>
       copilot\settings.copilot.json      Filtered Copilot-relevant keys only (no machine-specific plugin-cache paths, no org-identifying keys)
       copilot\copilot-cli-instructions.md  Personal instructions for GitHub Copilot CLI (~/.copilot/copilot-instructions.md)
     Scripts\
