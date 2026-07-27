@@ -263,9 +263,9 @@ Pace-over-time checkpoints are derived (not stored) by walking tasks in `Complet
 Self-contained HTML file, Highcharts via CDN, no build step. Embed the raw structured data in a `<script type="application/json" id="feature-metrics">` block — this is the aggregation hook: a future multi-feature dashboard can scan sibling `Estimation_Progress/dashboard.html` files across a project, pull this JSON block out of each, and merge them into one view without re-parsing markdown. Keep this JSON schema stable once used.
 
 Three charts:
-1. **Double-ring donut** — inner ring: Total Estimate vs Elapsed Capacity (true donut hole, not filled center; labels shown as initials, e.g. "TE"/"EC", full name still available on hover); outer ring: one slice per task, sized by estimate, colored by its phase (adjacent shades so phases cluster visually).
-2. **Phase bar chart** — Estimate vs Delivered per phase, grouped columns.
-3. **Pace combo chart** — Delivered-per-checkpoint as columns (left axis) plus cumulative Pace Ratio as a line (right axis), one point per task completion — shows whether pace was improving or slipping over the course of the feature.
+1. **Double-ring donut** — inner ring: Elapsed Capacity only (a single slice, labeled "EC"); outer ring: one slice per task, sized by estimate, colored by its phase (adjacent shades so phases cluster visually). A donut can't represent Total Estimate vs Elapsed Capacity together once EC exceeds TE (slices must sum to 100%, so overrun has no visual representation).
+2. **Phase combo chart** — Estimate vs Elapsed Capacity per phase as grouped columns (Delivered always equals Estimate once a task is Done, so it's not a useful comparison here — Elapsed Capacity per phase is), a per-phase Pace Ratio line on a secondary right-hand axis (>1.0 = ahead of pace for that phase), and a small corner donut showing Elapsed Capacity composition by phase (with total Elapsed Capacity labeled in the center). Combines what used to be three separate charts into one, modeled on Highcharts' "column, line and pie" combo pattern.
+3. **Gantt timeline** — phases as collapsible parent rows, tasks as child bars sized by estimate, positioned using each task's `Completed` timestamp (bar end = Completed, bar start = walked backward through business hours only — Mon–Fri, 09:00–18:00, 1h lunch, same Work Schedule constant as the Efficiency Metric — since no separate "task started" time is tracked). Requires the Highcharts Gantt module (`modules/gantt.js`) loaded alongside core Highcharts. A naive raw-hour subtraction would land some task starts on weekends/off-hours; the backward walk (minute-by-minute, skipping non-work time) avoids that.
 
 ```html
 <!DOCTYPE html>
@@ -274,33 +274,34 @@ Three charts:
 <meta charset="UTF-8">
 <title>{FEATURE_NAME} — Performance Dashboard</title>
 <script src="https://cdn.jsdelivr.net/npm/highcharts@11/highcharts.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/highcharts@11/modules/gantt.js"></script>
 <style>
   body { font-family: system-ui, sans-serif; margin: 2rem; background: #0f1117; color: #e6e6e6; }
-  .cards { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 2rem; }
-  .card { background: #1a1d27; border-radius: 8px; padding: 1rem 1.5rem; min-width: 160px; }
+  .top-row { display: flex; gap: 1rem; margin-bottom: 1rem; align-items: stretch; }
+  .cards-col { display: flex; flex-direction: column; gap: 1rem; min-width: 200px; }
+  .card { background: #1a1d27; border-radius: 8px; padding: 1rem 1.5rem; flex: 1; display: flex; flex-direction: column; justify-content: center; }
   .card h3 { margin: 0 0 .25rem; font-size: .85rem; color: #9aa0ab; font-weight: 500; }
   .card p { margin: 0; font-size: 1.6rem; font-weight: 700; }
-  .charts-row { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
-  .charts-row > div { flex: 1 1 380px; background: #1a1d27; border-radius: 8px; min-width: 0; }
-  .chart-full { background: #1a1d27; border-radius: 8px; }
+  .top-row > #donutChart { flex: 1; background: #1a1d27; border-radius: 8px; min-width: 0; }
+  .chart-full { background: #1a1d27; border-radius: 8px; margin-bottom: 1rem; }
 </style>
 </head>
 <body>
   <h1>{FEATURE_NAME} — Performance Dashboard</h1>
   <p>Completed {DATE} · Plan: <a href="../Plan/{DATE}-{slug}-plan.md">{DATE}-{slug}-plan.md</a></p>
 
-  <div class="cards">
-    <div class="card"><h3>Total Estimate</h3><p>{TOTAL_EST}h</p></div>
-    <div class="card"><h3>Delivered</h3><p>{TOTAL_DELIVERED}h</p></div>
-    <div class="card"><h3>Elapsed Capacity</h3><p>{ELAPSED_CAPACITY}h</p></div>
-    <div class="card"><h3>Final Pace Ratio</h3><p>{FINAL_PACE_RATIO} {PACE_LIGHT}</p></div>
+  <div class="top-row">
+    <div class="cards-col">
+      <div class="card"><h3>Total Estimate</h3><p>{TOTAL_EST}h</p></div>
+      <div class="card"><h3>Delivered</h3><p>{TOTAL_DELIVERED}h</p></div>
+      <div class="card"><h3>Elapsed Capacity</h3><p>{ELAPSED_CAPACITY}h</p></div>
+      <div class="card"><h3>Final Pace Ratio</h3><p>{FINAL_PACE_RATIO} {PACE_LIGHT}</p></div>
+    </div>
+    <div id="donutChart" style="height:420px;"></div>
   </div>
 
-  <div class="charts-row">
-    <div id="donutChart" style="height:380px;"></div>
-    <div id="phaseChart" style="height:380px;"></div>
-  </div>
-  <div class="chart-full" id="paceChart" style="height:380px;"></div>
+  <div class="chart-full" id="phaseChart" style="height:420px;"></div>
+  <div class="chart-full" id="ganttChart"></div>
 
   <script type="application/json" id="feature-metrics">
   {
@@ -309,13 +310,10 @@ Three charts:
     "completed": "{COMPLETED}",
     "totals": { "estimate": {TOTAL_EST}, "delivered": {TOTAL_DELIVERED}, "elapsedCapacity": {ELAPSED_CAPACITY} },
     "phases": [
-      { "name": "Phase 1 — (name)", "estimate": 0, "delivered": 0, "color": "#5b8def" }
+      { "name": "Phase 1 — (name)", "estimate": 0, "delivered": 0, "elapsedCapacity": 0, "color": "#5b8def" }
     ],
     "tasks": [
-      { "phase": "Phase 1 — (name)", "name": "Task 1", "estimate": 0, "color": "#5b8def" }
-    ],
-    "paceOverTime": [
-      { "timestamp": "{COMPLETED_TS}", "delivered": 0, "paceRatio": 0 }
+      { "phase": "Phase 1 — (name)", "name": "Task 1", "estimate": 0, "color": "#5b8def", "completed": "{TASK_1_COMPLETED_ISO}" }
     ]
   }
   </script>
@@ -332,25 +330,26 @@ Three charts:
       tooltip: { backgroundColor: '#1a1d27', style: { color: '#e6e6e6' } }
     });
 
-    // Double-ring donut: inner ring = Total Estimate vs Elapsed Capacity, outer ring = per-task breakdown
+    // Double-ring donut: inner ring = Elapsed Capacity only (a TE-vs-EC comparison can't
+    // live in a donut once EC exceeds TE, since slices must sum to 100%). Outer ring =
+    // per-task breakdown.
     Highcharts.chart('donutChart', {
       chart: { type: 'pie' },
-      title: { text: 'Estimate vs Elapsed Capacity — Overall & by Task' },
-      tooltip: { pointFormat: '{series.name}: <b>{point.y}h</b> ({point.percentage:.0f}%)' },
+      title: { text: 'Elapsed Capacity & Task Breakdown' },
+      tooltip: { pointFormat: '{series.name}: <b>{point.y}h</b>' },
       plotOptions: { pie: { dataLabels: { enabled: true, style: { color: '#e6e6e6', textOutline: 'none' }, distance: 12 } } },
       series: [
         {
-          name: 'Overall',
+          name: 'Elapsed',
           size: '45%',
           innerSize: '55%',
           data: [
-            { name: 'Total Estimate', y: data.totals.estimate, color: '#5b8def' },
             { name: 'Elapsed Capacity', y: data.totals.elapsedCapacity, color: '#3ecf8e' }
           ],
           dataLabels: {
             distance: '-22%',
             style: { fontSize: '0.75em', fontWeight: '700' },
-            formatter: function () { return this.point.name.split(' ').map(w => w[0]).join(''); }
+            format: 'EC'
           }
         },
         {
@@ -362,30 +361,87 @@ Three charts:
       ]
     });
 
-    // Estimate vs Delivered per phase
+    // Combo chart: Estimate vs Elapsed Capacity per phase (columns) + Pace Ratio per
+    // phase (line, secondary axis).
+    const paceRatios = data.phases.map(p => Math.round((p.estimate / p.elapsedCapacity) * 100) / 100);
     Highcharts.chart('phaseChart', {
-      chart: { type: 'column' },
-      title: { text: 'Estimate vs Delivered per Phase' },
+      title: { text: 'Estimate vs Elapsed Capacity per Phase' },
       xAxis: { categories: data.phases.map(p => p.name) },
-      yAxis: { title: { text: 'Hours' } },
-      series: [
-        { name: 'Estimate (h)', data: data.phases.map(p => p.estimate), color: '#5b8def' },
-        { name: 'Delivered (h)', data: data.phases.map(p => p.delivered), color: '#3ecf8e' }
-      ]
-    });
-
-    // Delivered per checkpoint (bars) + cumulative Pace Ratio (line, secondary axis)
-    Highcharts.chart('paceChart', {
-      title: { text: 'Delivered per Checkpoint & Pace Ratio Over Time' },
-      xAxis: { categories: data.paceOverTime.map(p => p.timestamp) },
       yAxis: [
-        { title: { text: 'Delivered (h)', style: { color: '#5b8def' } } },
+        { title: { text: 'Hours', style: { color: '#e6e6e6' } } },
         { title: { text: 'Pace Ratio', style: { color: '#f2c94c' } }, opposite: true, gridLineWidth: 0 }
       ],
       series: [
-        { name: 'Delivered (h)', type: 'column', yAxis: 0, color: '#5b8def', data: data.paceOverTime.map(p => p.delivered) },
-        { name: 'Pace Ratio (>1.0 = ahead)', type: 'line', yAxis: 1, color: '#f2c94c', data: data.paceOverTime.map(p => p.paceRatio), marker: { enabled: true } }
+        { name: 'Estimate (h)', type: 'column', yAxis: 0, data: data.phases.map(p => p.estimate), color: '#5b8def' },
+        { name: 'Elapsed Capacity (h)', type: 'column', yAxis: 0, data: data.phases.map(p => p.elapsedCapacity), color: '#3ecf8e' },
+        {
+          name: 'Pace Ratio (>1.0 = ahead)',
+          type: 'line',
+          yAxis: 1,
+          color: '#f2c94c',
+          data: paceRatios,
+          marker: { enabled: true }
+        }
       ]
+    });
+
+    // Gantt timeline: phases as parent rows, tasks as child bars. Each task's start is
+    // derived by walking backward from its Completed timestamp through business hours
+    // only (Mon-Fri, 09:00-18:00, 1h lunch) — no separate "started" timestamp is tracked
+    // per task, so this is how the bar's start is reconstructed. A naive
+    // `end - estimate*3600*1000` subtraction can land a task's start on a weekend or
+    // outside work hours entirely (e.g. subtracting 16h from a Monday 11:00 completion
+    // lands on Sunday 19:00) — walking backward minute-by-minute and only counting
+    // work minutes avoids that.
+    function isWorkMinute(date) {
+      const day = date.getDay(); // 0 = Sun, 6 = Sat
+      if (day === 0 || day === 6) return false;
+      const h = date.getHours() + date.getMinutes() / 60;
+      if (h < 9 || h >= 18) return false;
+      if (h >= 13 && h < 14) return false; // lunch
+      return true;
+    }
+    function subtractWorkHours(endMs, hours) {
+      let cursor = new Date(endMs);
+      let remainingMinutes = Math.round(hours * 60);
+      while (remainingMinutes > 0) {
+        cursor = new Date(cursor.getTime() - 60000);
+        if (isWorkMinute(cursor)) remainingMinutes--;
+      }
+      return cursor.getTime();
+    }
+
+    const phaseIds = data.phases.map((p, i) => ({ ...p, id: 'phase' + i }));
+    const ganttSeries = [];
+    phaseIds.forEach(p => ganttSeries.push({ id: p.id, name: p.name, collapsed: false }));
+    data.tasks.forEach((t, i) => {
+      const phase = phaseIds.find(p => p.name === t.phase);
+      const end = new Date(t.completed).getTime();
+      const start = subtractWorkHours(end, t.estimate);
+      ganttSeries.push({
+        id: 'task' + i,
+        parent: phase ? phase.id : undefined,
+        name: t.name,
+        start, end,
+        completed: { amount: 1 },
+        color: t.color
+      });
+    });
+
+    Highcharts.ganttChart('ganttChart', {
+      // Height is computed from the actual row count (phases + tasks) rather than a
+      // fixed guess, so every row is always visible without clipping or needing to
+      // scroll/expand, regardless of how many phases or tasks a feature has.
+      chart: { height: 90 + ganttSeries.length * 32 },
+      title: { text: 'Phase & Task Timeline' },
+      subtitle: { text: 'Work schedule: Mon–Fri, 09:00–18:00, 1h lunch — task positions/durations already reflect this' },
+      xAxis: { currentDateIndicator: false },
+      // Bars for individual tasks are often too narrow (a few hours wide on a
+      // multi-week timeline) for the default completion-percentage label to fit
+      // without overlapping the row below it — the color fill already shows
+      // progress, and full detail is still available on hover via tooltip.
+      plotOptions: { gantt: { dataLabels: { enabled: false } } },
+      series: [{ name: 'Feature Timeline', data: ganttSeries, dataLabels: { enabled: false } }]
     });
   </script>
 </body>

@@ -22,7 +22,7 @@ Clone it anywhere -- `C:\dev\DevSetup`, your Desktop, wherever you like. All scr
 - `Scripts\01-Install-Core-Apps.ps1` – optional; installs everything in `winget-packages.json` (skips anything already installed) plus NVM for Windows. Not required for the AI agent environment (script 04) -- only run this if you also want the rest of your apps restored via winget.
 - `Scripts\02-Restore-VSCode-Extensions.ps1` – restores VS Code extensions from `vscode-extensions.txt`.
 - `Scripts\03-Install-All.ps1` – restores VS Code extensions, .NET global tools from `dotnet-tools.txt`, NVM/Node (from `node-version.txt`) and global npm packages from `npm-global-packages.txt`. Pass `-IncludeWinget` to also run script 01 as its first step (off by default).
-- `Scripts\04-Restore-Agent-Skills.ps1` -- restores the AI agent environment (Copilot skills/prompts/instructions, Copilot CLI personal instructions + CLI skills like graphify, Claude Code CLAUDE.MD/settings, plugins) from `AgentSetup\`. Note: the `graphify` CLI skill also needs `pip install graphifyy` to actually run -- the script only restores its skill files, not the Python package.
+- `Scripts\04-Restore-Agent-Skills.ps1` -- restores the AI agent environment (Copilot skills/prompts/instructions, Copilot CLI personal instructions, Claude Code CLAUDE.MD/settings, plugins) from `AgentSetup\`.
 - `AgentSetup\` -- snapshot of AI agent config (18 Copilot skills, 22 prompts, instructions, Claude Code CLAUDE.MD/settings). See `AgentSetup\README.md` for details. This is a one-way restore only (repo → machine) -- there's no export script, so update this folder manually if you change your skills/prompts later.
 - `node-version.txt` – optional; one line with your Node version (e.g. `20.11.0`) for NVM install via script 03 (requires NVM for Windows already installed -- `winget install -e --id CoreyButler.NVMforWindows`, or run script 01).
 - `npm-global-packages.txt` – optional; one global npm package name per line to install after Node is set up.
@@ -31,13 +31,13 @@ Clone it anywhere -- `C:\dev\DevSetup`, your Desktop, wherever you like. All scr
 
 ## Example: bootstrap skill dashboard output
 
-The `bootstrap` skill (see `AgentSetup\agents-skills\bootstrap\SKILL.md`) scaffolds feature docs (`Plan/`, `Estimation_Progress/`, `Feature/`) and, once every task in `progress.md` is marked ✅ Done, can generate a self-contained `Estimation_Progress\dashboard.html` (Highcharts, no build step) summarizing the feature's performance. Sample output for a finished feature:
+The `bootstrap` skill (see `AgentSetup\agents-skills\bootstrap\SKILL.md`) scaffolds feature docs (`Plan/`, `Estimation_Progress/`, `Feature/`) and, once every task in `progress.md` is marked ✅ Done, can generate a self-contained `Estimation_Progress\dashboard.html` (Highcharts, no build step) summarizing the feature's performance. Sample output for a full app project (5 phases, 17 tasks, planned 2 months, finished ~1.5 weeks early):
 
 ![Example bootstrap skill performance dashboard](images/dashboard-example.png)
 
-- **Double-ring donut** — inner ring (true donut hole): Total Estimate vs Elapsed Capacity; outer ring: per-task breakdown, colored by phase.
-- **Bar chart** — Estimate vs Delivered per phase.
-- **Combo chart** — Delivered-per-checkpoint bars + cumulative Pace Ratio line (>1.0 = ahead of pace), one point per task completion.
+- **Double-ring donut** — inner ring (true donut hole): Elapsed Capacity only; outer ring: per-task breakdown, colored by phase.
+- **Phase combo chart** — Estimate vs Elapsed Capacity per phase (columns), a per-phase Pace Ratio line on a secondary right-hand axis, and a small corner donut showing Elapsed Capacity composition by phase (total labeled in the center) — modeled on Highcharts' "column, line and pie" combo pattern.
+- **Gantt timeline** — phases as collapsible parent rows, tasks as child bars positioned by each task's `Completed` timestamp (Highcharts Gantt module).
 
 Full HTML/Highcharts template and generation rules live in the `## Dashboard Generation` section of the skill file. Live source for this example: `images\example-dashboard.html`.
 

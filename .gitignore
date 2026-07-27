@@ -38,10 +38,6 @@ Installed-Apps.txt
 # AI assistant artifacts
 context-snapshot.json
 
-# graphify run output -- generated per-machine/per-run knowledge graph artifacts,
-# not source (the graphify skill itself is tracked under AgentSetup\copilot\skills\graphify\)
-graphify-out/
-
 # Workspace-local VS Code settings -- may contain machine/location-specific paths;
 # each clone/location keeps its own, not shared via git
 .vscode/settings.json
