@@ -32,7 +32,7 @@ Write-Host ""
 
 # --- 1. Restore .agents/skills/ ---
 $sourceAgentsSkills = Join-Path $backupRoot "agents-skills"
-Write-Host "[1/7] Restoring .agents/skills/ ..." -ForegroundColor Yellow
+Write-Host "[1/8] Restoring .agents/skills/ ..." -ForegroundColor Yellow
 
 if (Test-Path $sourceAgentsSkills) {
     Get-ChildItem -Path $sourceAgentsSkills -Directory | ForEach-Object {
@@ -48,7 +48,7 @@ if (Test-Path $sourceAgentsSkills) {
 }
 
 # --- 2. Restore .claude/CLAUDE.MD ---
-Write-Host "[2/7] Restoring .claude/CLAUDE.MD ..." -ForegroundColor Yellow
+Write-Host "[2/8] Restoring .claude/CLAUDE.MD ..." -ForegroundColor Yellow
 
 if (-not (Test-Path $targetClaudeDir)) {
     New-Item -ItemType Directory -Path $targetClaudeDir -Force | Out-Null
@@ -63,7 +63,7 @@ if (Test-Path "$sourceClaude\CLAUDE.MD") {
 }
 
 # --- 3. Restore .claude/settings.json ---
-Write-Host "[3/7] Restoring .claude/settings.json ..." -ForegroundColor Yellow
+Write-Host "[3/8] Restoring .claude/settings.json ..." -ForegroundColor Yellow
 
 if (Test-Path "$sourceClaude\settings.json") {
     Copy-Item "$sourceClaude\settings.json" "$targetClaudeDir\settings.json" -Force
@@ -73,7 +73,7 @@ if (Test-Path "$sourceClaude\settings.json") {
 }
 
 # --- 4. Restore .claude/skills/ ---
-Write-Host "[4/7] Restoring .claude/skills/ ..." -ForegroundColor Yellow
+Write-Host "[4/8] Restoring .claude/skills/ ..." -ForegroundColor Yellow
 
 $sourceClaudeSkills = Join-Path $sourceClaude "skills"
 if (Test-Path $sourceClaudeSkills) {
@@ -88,7 +88,7 @@ if (Test-Path $sourceClaudeSkills) {
 }
 
 # --- 5. Install plugins from git ---
-Write-Host "[5/7] Installing plugins (git clone) ..." -ForegroundColor Yellow
+Write-Host "[5/8] Installing plugins (git clone) ..." -ForegroundColor Yellow
 
 $pluginsDir = Join-Path $targetClaudeDir "plugins\marketplaces"
 if (-not (Test-Path $pluginsDir)) {
@@ -116,7 +116,7 @@ if ($gitAvailable) {
 }
 
 # --- 6. Restore Copilot config (VS Code User prompts + settings) ---
-Write-Host "[6/7] Restoring Copilot config ..." -ForegroundColor Yellow
+Write-Host "[6/8] Restoring Copilot config ..." -ForegroundColor Yellow
 
 $sourceCopilot = Join-Path $backupRoot "copilot"
 $sourcePrompts = Join-Path $sourceCopilot "prompts"
@@ -167,7 +167,7 @@ if (Test-Path $sourceCopilotSettings) {
 }
 
 # --- 7. Restore Copilot CLI personal instructions (for when Copilot CLI is installed) ---
-Write-Host "[7/7] Restoring Copilot CLI instructions ..." -ForegroundColor Yellow
+Write-Host "[7/8] Restoring Copilot CLI instructions ..." -ForegroundColor Yellow
 
 $sourceCliInstructions = Join-Path $sourceCopilot "copilot-cli-instructions.md"
 $targetCliInstructions = Join-Path $targetCopilotCliDir "copilot-instructions.md"
@@ -180,6 +180,26 @@ if (Test-Path $sourceCliInstructions) {
     Write-Host "  [OK] ~/.copilot/copilot-instructions.md restored (used once GitHub Copilot CLI is installed)" -ForegroundColor Green
 } else {
     Write-Host "  [SKIP] No copilot-cli-instructions.md in backup" -ForegroundColor Red
+}
+
+# --- 8. Restore Copilot CLI skills (e.g. graphify) ---
+Write-Host "[8/8] Restoring .copilot/skills/ ..." -ForegroundColor Yellow
+
+$targetCopilotCliSkills = Join-Path $targetCopilotCliDir "skills"
+$sourceCopilotSkills = Join-Path $sourceCopilot "skills"
+
+if (Test-Path $sourceCopilotSkills) {
+    Get-ChildItem -Path $sourceCopilotSkills -Directory | ForEach-Object {
+        $targetPath = Join-Path $targetCopilotCliSkills $_.Name
+        if (-not (Test-Path $targetPath)) {
+            New-Item -ItemType Directory -Path $targetPath -Force | Out-Null
+        }
+        Copy-Item -Path "$($_.FullName)\*" -Destination $targetPath -Recurse -Force
+        Write-Host "  [OK] $($_.Name)" -ForegroundColor Green
+    }
+    Write-Host "  NOTE: the 'graphify' skill needs the graphifyy Python package (pip install graphifyy) to actually run." -ForegroundColor DarkGray
+} else {
+    Write-Host "  [SKIP] No .copilot/skills/ in backup" -ForegroundColor Red
 }
 
 # --- Verification ---
@@ -195,7 +215,8 @@ $checks = @(
     @{ Name = ".claude/skills/"; Path = $targetClaudeSkills },
     @{ Name = "Code/User/prompts/"; Path = $targetPrompts },
     @{ Name = "Code/User/settings.json"; Path = $targetVSCodeSettings },
-    @{ Name = ".copilot/copilot-instructions.md"; Path = $targetCliInstructions }
+    @{ Name = ".copilot/copilot-instructions.md"; Path = $targetCliInstructions },
+    @{ Name = ".copilot/skills/graphify"; Path = "$targetCopilotCliSkills\graphify\SKILL.md" }
 )
 
 foreach ($check in $checks) {

@@ -22,6 +22,7 @@ Live locations (where VS Code / Claude / Copilot reads from):
   %USERPROFILE%\.claude\settings.json   Env vars, enabled plugins, model config, real hooks (SessionStart, statusLine)
   %USERPROFILE%\.claude\skills\         Additional Claude-only skills
   %USERPROFILE%\.claude\plugins\        Installed plugins (cloned from git)
+  %USERPROFILE%\.copilot\skills\        GitHub Copilot CLI skills installed via its own marketplace (e.g. graphify) -- separate from .agents\skills\
   %APPDATA%\Code\User\prompts\          Copilot slash-commands (.prompt.md) -- mirrors .agents/skills
   %APPDATA%\Code\User\settings.json     Copilot instructions (codeGeneration.instructions), tool auto-approve, otel
 
@@ -35,6 +36,7 @@ Backup (tracked in this git repo -- survives format, portable to any machine):
       copilot\prompts\<22 *.prompt.md files>
       copilot\settings.copilot.json      Filtered Copilot-relevant keys only (no machine-specific plugin-cache paths, no org-identifying keys)
       copilot\copilot-cli-instructions.md  Personal instructions for GitHub Copilot CLI (~/.copilot/copilot-instructions.md)
+      copilot\skills\graphify\           GitHub Copilot CLI skill: turns a folder into a knowledge graph (/graphify). Requires `pip install graphifyy` to actually run -- the skill files alone don't install the Python package.
     Scripts\
       04-Restore-Agent-Skills.ps1        This repo's AgentSetup\ --> new machine (one-way; update AgentSetup\ by hand when you change something locally)
 
@@ -177,6 +179,9 @@ cd DevSetup\Scripts
 .\04-Restore-Agent-Skills.ps1
 
 # 6. Open VS Code, start new chat, say "bootstrap superpowers" -- works.
+
+# 7. (Optional) To actually use the graphify skill (/graphify), install its Python package:
+pip install graphifyy
 ```
 
 ---
