@@ -17,19 +17,19 @@ This system ensures your AI agent configuration (skills, hooks, plugins, setting
 GLOBAL (machine-level -- applies to ALL projects/workspaces)
 ======
 Live locations (where VS Code / Claude / Copilot reads from):
-  %USERPROFILE%\.agents\skills\         18 skills (bootstrap, caveman, TDD, systematic-debugging, etc. -- Copilot-only, NOT read by Claude Code)
+  %USERPROFILE%\.agents\skills\         28 skills -- Copilot CLI's global skill path (confirmed live via session.skills_loaded), NOT read by Claude Code
+  %USERPROFILE%\.copilot\skills\        Mirror of the same 28 skills -- VS Code Copilot CHAT's documented global "personal skills" path (distinct from .agents\skills\, which Chat does NOT read). Both are restored from the SAME source (agents-skills\) -- see step 8 in the restore script.
   %USERPROFILE%\.claude\CLAUDE.MD       Claude Code instructions (workflow routing, TDD, security, etc.)
   %USERPROFILE%\.claude\settings.json   Env vars, enabled plugins, model config, real hooks (SessionStart, statusLine)
   %USERPROFILE%\.claude\skills\         Additional Claude-only skills
   %USERPROFILE%\.claude\plugins\        Installed plugins (cloned from git)
-  %USERPROFILE%\.copilot\skills\        GitHub Copilot CLI skills installed via its own marketplace -- separate from .agents\skills\
   %APPDATA%\Code\User\prompts\          Copilot slash-commands (.prompt.md) -- mirrors .agents/skills
   %APPDATA%\Code\User\settings.json     Copilot instructions (codeGeneration.instructions), tool auto-approve, otel
 
 Backup (tracked in this git repo -- survives format, portable to any machine):
   DevSetup\
     AgentSetup\
-      agents-skills\<18 skill folders>\SKILL.md    Also read by GitHub Copilot CLI (~/.agents/skills) once installed, per GitHub's docs -- not just VS Code
+      agents-skills\<28 skill folders>\SKILL.md    Single source of truth -- restored to BOTH .agents\skills\ (Copilot CLI) and .copilot\skills\ (VS Code Copilot Chat)
       claude\CLAUDE.MD
       claude\settings.json
       claude\skills\explore-codebase.md
@@ -84,7 +84,7 @@ VS Code's Copilot chat instructions (`codeGeneration.instructions`, `.prompt.md`
 | 6 | `DevSetup\AgentSetup\copilot\prompts\*` | `%APPDATA%\Code\User\prompts\` |
 | 6 | `DevSetup\AgentSetup\copilot\settings.copilot.json` | merged into `%APPDATA%\Code\User\settings.json` (existing keys preserved, Copilot keys overwritten) |
 | 7 | `DevSetup\AgentSetup\copilot\copilot-cli-instructions.md` | `%USERPROFILE%\.copilot\copilot-instructions.md` (used once GitHub Copilot CLI is installed) |
-| 8 | `DevSetup\AgentSetup\copilot\skills\*` | `%USERPROFILE%\.copilot\skills\` |
+| 8 | `DevSetup\AgentSetup\agents-skills\*` (same source as step 1) | `%USERPROFILE%\.copilot\skills\` -- VS Code Copilot Chat's global skill path, distinct from step 1's `.agents\skills\` |
 | 9 | `DevSetup\AgentSetup\copilot\copilot-cli-settings.json` | merged into `%USERPROFILE%\.copilot\settings.json` (default model, etc.) |
 | 10 | `DevSetup\AgentSetup\copilot\hooks\*` | `%USERPROFILE%\.copilot\hooks\` (requires `pwsh` on PATH -- see note below) |
 

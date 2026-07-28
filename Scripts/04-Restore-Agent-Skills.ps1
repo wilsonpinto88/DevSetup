@@ -189,14 +189,17 @@ if (Test-Path $sourceCliInstructions) {
     Write-Host "  [SKIP] No copilot-cli-instructions.md in backup" -ForegroundColor Red
 }
 
-# --- 8. Restore Copilot CLI skills ---
-Write-Host "[8/10] Restoring .copilot/skills/ ..." -ForegroundColor Yellow
+# --- 8. Restore Copilot skills (global, for both Copilot CLI and VS Code Copilot Chat) ---
+# Same source as step 1 (AgentSetup\agents-skills\) -- single source of truth, restored to
+# BOTH .agents\skills\ (Copilot CLI's global skill path) and .copilot\skills\ (VS Code Copilot
+# Chat's documented global "personal skills" path). Without the .copilot\skills\ copy, Chat's
+# agent mode does not see these skills -- confirmed via VS Code/GitHub docs, 2026-07-28.
+Write-Host "[8/10] Restoring .copilot/skills/ (mirrors .agents/skills/ for VS Code Copilot Chat) ..." -ForegroundColor Yellow
 
 $targetCopilotCliSkills = Join-Path $targetCopilotCliDir "skills"
-$sourceCopilotSkills = Join-Path $sourceCopilot "skills"
 
-if (Test-Path $sourceCopilotSkills) {
-    Get-ChildItem -Path $sourceCopilotSkills -Directory | ForEach-Object {
+if (Test-Path $sourceAgentsSkills) {
+    Get-ChildItem -Path $sourceAgentsSkills -Directory | ForEach-Object {
         $targetPath = Join-Path $targetCopilotCliSkills $_.Name
         if (-not (Test-Path $targetPath)) {
             New-Item -ItemType Directory -Path $targetPath -Force | Out-Null
