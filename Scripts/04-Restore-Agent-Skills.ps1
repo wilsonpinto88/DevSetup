@@ -7,6 +7,13 @@
 #   .\04-Restore-Agent-Skills.ps1
 #
 # Prerequisites: Git installed (for plugin cloning), VS Code installed.
+#                pwsh (PowerShell 7+) installed -- Copilot CLI hooks on Windows shell out to
+#                pwsh specifically; without it, hooks fail-closed and block matched tool calls.
+#                Install with: winget install --id Microsoft.PowerShell
+#                For context-mode's VS Code Copilot integration (per-project, see
+#                AgentSetup\README.md "Known gaps"): Node 20.12+ active (`nvm use` if needed)
+#                and `npm install -g context-mode --ignore-scripts` + a prebuilt better-sqlite3
+#                .node binary copied in (node-gyp needs VS Build Tools otherwise).
 
 $ErrorActionPreference = "Stop"
 
@@ -116,7 +123,7 @@ if ($gitAvailable) {
 }
 
 # --- 6. Restore Copilot config (VS Code User prompts + settings) ---
-Write-Host "[6/8] Restoring Copilot config ..." -ForegroundColor Yellow
+Write-Host "[6/10] Restoring Copilot config ..." -ForegroundColor Yellow
 
 $sourceCopilot = Join-Path $backupRoot "copilot"
 $sourcePrompts = Join-Path $sourceCopilot "prompts"
@@ -167,7 +174,7 @@ if (Test-Path $sourceCopilotSettings) {
 }
 
 # --- 7. Restore Copilot CLI personal instructions (for when Copilot CLI is installed) ---
-Write-Host "[7/8] Restoring Copilot CLI instructions ..." -ForegroundColor Yellow
+Write-Host "[7/10] Restoring Copilot CLI instructions ..." -ForegroundColor Yellow
 
 $sourceCliInstructions = Join-Path $sourceCopilot "copilot-cli-instructions.md"
 $targetCliInstructions = Join-Path $targetCopilotCliDir "copilot-instructions.md"
@@ -183,7 +190,7 @@ if (Test-Path $sourceCliInstructions) {
 }
 
 # --- 8. Restore Copilot CLI skills ---
-Write-Host "[8/8] Restoring .copilot/skills/ ..." -ForegroundColor Yellow
+Write-Host "[8/10] Restoring .copilot/skills/ ..." -ForegroundColor Yellow
 
 $targetCopilotCliSkills = Join-Path $targetCopilotCliDir "skills"
 $sourceCopilotSkills = Join-Path $sourceCopilot "skills"
@@ -201,6 +208,62 @@ if (Test-Path $sourceCopilotSkills) {
     Write-Host "  [SKIP] No .copilot/skills/ in backup" -ForegroundColor Red
 }
 
+# --- 9. Restore Copilot CLI settings (default model, etc.) ---
+Write-Host "[9/10] Restoring .copilot/settings.json (model, ...) ..." -ForegroundColor Yellow
+
+$sourceCliSettings = Join-Path $sourceCopilot "copilot-cli-settings.json"
+$targetCliSettings = Join-Path $targetCopilotCliDir "settings.json"
+
+if (Test-Path $sourceCliSettings) {
+    $cliSettings = [System.IO.File]::ReadAllText($sourceCliSettings, [System.Text.Encoding]::UTF8) | ConvertFrom-Json
+
+    if (Test-Path $targetCliSettings) {
+        $liveJson = [System.IO.File]::ReadAllText($targetCliSettings, [System.Text.Encoding]::UTF8)
+        $merged = $liveJson | ConvertFrom-Json
+    } else {
+        if (-not (Test-Path $targetCopilotCliDir)) {
+            New-Item -ItemType Directory -Path $targetCopilotCliDir -Force | Out-Null
+        }
+        $merged = [PSCustomObject]@{}
+    }
+
+    foreach ($prop in $cliSettings.PSObject.Properties) {
+        if ($merged.PSObject.Properties.Name -contains $prop.Name) {
+            $merged.($prop.Name) = $prop.Value
+        } else {
+            $merged | Add-Member -MemberType NoteProperty -Name $prop.Name -Value $prop.Value
+        }
+    }
+
+    $mergedJson = $merged | ConvertTo-Json -Depth 10
+    [System.IO.File]::WriteAllText($targetCliSettings, $mergedJson, [System.Text.UTF8Encoding]::new($false))
+    Write-Host "  [OK] settings.json merged (model: $($cliSettings.model))" -ForegroundColor Green
+} else {
+    Write-Host "  [SKIP] No copilot-cli-settings.json in backup" -ForegroundColor Red
+}
+
+# --- 10. Restore Copilot CLI user-level hooks ---
+Write-Host "[10/10] Restoring .copilot/hooks/ ..." -ForegroundColor Yellow
+
+$sourceCopilotHooks = Join-Path $sourceCopilot "hooks"
+$targetCopilotHooks = Join-Path $targetCopilotCliDir "hooks"
+
+if (Test-Path $sourceCopilotHooks) {
+    if (-not (Test-Path $targetCopilotHooks)) {
+        New-Item -ItemType Directory -Path $targetCopilotHooks -Force | Out-Null
+    }
+    Copy-Item -Path "$sourceCopilotHooks\*" -Destination $targetCopilotHooks -Recurse -Force
+    $count = (Get-ChildItem $targetCopilotHooks -Filter "*.json" -File).Count
+    Write-Host "  [OK] $count hook definition(s) restored" -ForegroundColor Green
+
+    if (-not (Get-Command pwsh -ErrorAction SilentlyContinue)) {
+        Write-Host "  [WARN] pwsh (PowerShell 7+) not found -- Windows hooks require it and fail-closed without it." -ForegroundColor Red
+        Write-Host "         Install with: winget install --id Microsoft.PowerShell" -ForegroundColor Red
+    }
+} else {
+    Write-Host "  [SKIP] No .copilot/hooks/ in backup" -ForegroundColor Red
+}
+
 # --- Verification ---
 Write-Host ""
 Write-Host "=== Verification ===" -ForegroundColor Cyan
@@ -214,7 +277,9 @@ $checks = @(
     @{ Name = ".claude/skills/"; Path = $targetClaudeSkills },
     @{ Name = "Code/User/prompts/"; Path = $targetPrompts },
     @{ Name = "Code/User/settings.json"; Path = $targetVSCodeSettings },
-    @{ Name = ".copilot/copilot-instructions.md"; Path = $targetCliInstructions }
+    @{ Name = ".copilot/copilot-instructions.md"; Path = $targetCliInstructions },
+    @{ Name = ".copilot/settings.json"; Path = $targetCliSettings },
+    @{ Name = ".copilot/hooks/dangerous-command-guard.json"; Path = (Join-Path $targetCopilotHooks "dangerous-command-guard.json") }
 )
 
 foreach ($check in $checks) {

@@ -48,3 +48,5 @@ context-snapshot.json
 # Scripts/ and AgentSetup/ use relative paths / $PSScriptRoot / $env:USERPROFILE -- no hardcoded
 # absolute paths as of that date. If you find one referencing the old OneDrive path, it's stale --
 # flag it, don't assume it's still valid.
+session-log.md
+state.md

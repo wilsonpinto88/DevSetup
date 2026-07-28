@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "hooks": {
+    "preToolUse": [
+      {
+        "type": "command",
+        "matcher": "^shell$",
+        "bash": "bash \"$HOME/.copilot/hooks/scripts/dangerous-command-guard.sh\"",
+        "powershell": "pwsh -NoProfile -File \"$env:USERPROFILE\\.copilot\\hooks\\scripts\\dangerous-command-guard.ps1\"",
+        "timeoutSec": 5
+      }
+    ]
+  }
+}

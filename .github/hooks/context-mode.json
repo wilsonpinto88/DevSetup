@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      { "type": "command", "command": "context-mode hook vscode-copilot sessionstart", "timeoutSec": 15 }
+    ],
+    "preToolUse": [
+      { "type": "command", "command": "context-mode hook vscode-copilot pretooluse", "timeoutSec": 10 }
+    ],
+    "postToolUse": [
+      { "type": "command", "command": "context-mode hook vscode-copilot posttooluse", "timeoutSec": 10 }
+    ],
+    "preCompact": [
+      { "type": "command", "command": "context-mode hook vscode-copilot precompact", "timeoutSec": 10 }
+    ]
+  }
+}
