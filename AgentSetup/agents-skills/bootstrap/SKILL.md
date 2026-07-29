@@ -410,6 +410,32 @@ Three charts:
       }
       return cursor.getTime();
     }
+    // The axis must hide non-working time too, not just position bars correctly within
+    // it — otherwise Highcharts renders a continuous 24/7 grid (nights + weekends) and
+    // task bars *appear* to sit inside "off-hours" columns even though their start/end
+    // timestamps are work-hours-only, misleadingly implying weekend/night work happened.
+    // Highcharts Gantt's xAxis.breaks compresses those ranges out of the rendered axis.
+    function computeNonWorkingBreaks(minMs, maxMs) {
+      const breaks = [];
+      const dayStart = new Date(minMs);
+      dayStart.setHours(0, 0, 0, 0);
+      const cursor = new Date(dayStart);
+      const end = new Date(maxMs);
+      end.setHours(24, 0, 0, 0);
+      while (cursor.getTime() < end.getTime()) {
+        const day = cursor.getDay(); // 0 = Sun, 6 = Sat
+        const dayMs = cursor.getTime();
+        if (day === 0 || day === 6) {
+          breaks.push({ from: dayMs, to: dayMs + 24 * 3600000 }); // whole weekend day
+        } else {
+          breaks.push({ from: dayMs, to: dayMs + 9 * 3600000 });                // 00:00-09:00
+          breaks.push({ from: dayMs + 13 * 3600000, to: dayMs + 14 * 3600000 }); // 13:00-14:00 lunch
+          breaks.push({ from: dayMs + 18 * 3600000, to: dayMs + 24 * 3600000 }); // 18:00-24:00
+        }
+        cursor.setDate(cursor.getDate() + 1);
+      }
+      return breaks;
+    }
 
     const phaseIds = data.phases.map((p, i) => ({ ...p, id: 'phase' + i }));
     const ganttSeries = [];
@@ -428,14 +454,21 @@ Three charts:
       });
     });
 
+    const taskTimes = ganttSeries.filter(s => s.start !== undefined);
+    const ganttMin = Math.min(...taskTimes.map(s => s.start));
+    const ganttMax = Math.max(...taskTimes.map(s => s.end));
+
     Highcharts.ganttChart('ganttChart', {
       // Height is computed from the actual row count (phases + tasks) rather than a
       // fixed guess, so every row is always visible without clipping or needing to
       // scroll/expand, regardless of how many phases or tasks a feature has.
       chart: { height: 90 + ganttSeries.length * 32 },
       title: { text: 'Phase & Task Timeline' },
-      subtitle: { text: 'Work schedule: Mon–Fri, 09:00–18:00, 1h lunch — task positions/durations already reflect this' },
-      xAxis: { currentDateIndicator: false },
+      subtitle: { text: 'Work schedule: Mon–Fri, 09:00–18:00, 1h lunch — non-working time is compressed out of the axis below, not just excluded from bar positions' },
+      xAxis: {
+        currentDateIndicator: false,
+        breaks: computeNonWorkingBreaks(ganttMin, ganttMax)
+      },
       // Bars for individual tasks are often too narrow (a few hours wide on a
       // multi-week timeline) for the default completion-percentage label to fit
       // without overlapping the row below it — the color fill already shows
