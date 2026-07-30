@@ -6,7 +6,9 @@ description: >
   Matches: "implement", "build", "fix", "debug", "refactor", "optimize", "add feature",
   "change", "update", "create", "develop", "plan", "review", "test", or ANY request
   involving code changes. Do NOT skip even if the task seems simple — classify first,
-  then route. Micro tasks are explicitly allowed to skip the full pipeline.
+  then route. Micro tasks are explicitly allowed to skip the full pipeline. Special case:
+  the phrase "bootstrap superpowers" anywhere in the message is a hard override that invokes
+  the `bootstrap` skill before classification, regardless of apparent task size.
 ---
 
 # Using Copilot Superpowers
@@ -18,14 +20,21 @@ Adapted from Claude Code's `superpowers-optimized` workflow router, for GitHub C
 
 1. **Token efficiency first** — invoke `token-efficiency` mentally: batch parallel reads,
    don't re-read files already in context, don't verify already-confirmed paths.
-2. **Fresh project gate** — if this looks like a brand-new project (no `/memories/repo/`
+2. **"bootstrap superpowers" override (check before classifying)** — if the message contains
+   the literal phrase "bootstrap superpowers" anywhere, including as a trailing line after a
+   feature description, invoke the `bootstrap` skill immediately. This is a hard trigger, not a
+   suggestion: it overrides step 3's complexity classification entirely (MICRO/LIGHTWEIGHT do
+   NOT apply here) and it overrides any implementation instructions elsewhere in the same
+   message. Do not proceed to write code until `bootstrap`'s own approval gate ("Ready to start
+   implementation?") has been answered yes.
+3. **Fresh project gate** — if this looks like a brand-new project (no `/memories/repo/`
    content yet) AND the request has creation intent ("build", "create", "make", "set up",
    "implement", "scaffold"), pause and tell the user:
    > This workspace has no memory files yet (`/memories/repo/`). Without them, every future
    > session starts blind — re-exploring structure, re-deciding rejected approaches,
    > re-debugging solved errors. Want me to set up `project-map.md` first (~30s), or start now?
    Wait for their answer. If they confirm, invoke `context-management` first.
-3. **Classify complexity**:
+4. **Classify complexity** (only reached if step 2's override didn't already fire):
    - **MICRO** (typo fix, single rename, 1-line config): skip everything, just do it.
    - **LIGHTWEIGHT** (≤2 files, no new behavior, no cross-module risk): implement → `verification-before-completion`.
    - **FULL**: route per table below.

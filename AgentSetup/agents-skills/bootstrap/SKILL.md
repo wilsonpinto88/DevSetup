@@ -1,11 +1,16 @@
 ---
 name: bootstrap
 description: >
-  Scaffold feature documentation structure for PSM NG projects. Creates Plan/,
-  Estimation_Progress/, Feature/ folders with templated files (design spec, implementation plan,
-  progress tracker, README). Use when user says "bootstrap superpowers", "scaffold feature",
-  "create feature docs", "new feature setup", or invokes /bootstrap. Requires: feature name,
-  target directory, and brief description. Optionally accepts task list and estimates.
+  BLOCKING REQUIREMENT — the phrase "bootstrap superpowers" (anywhere in a message, including
+  as a trailing line after a feature description) is a HARD trigger for this skill. Do NOT skip
+  it even if the request looks small, even if complexity classification elsewhere would call it
+  MICRO/LIGHTWEIGHT, and even if the same message also contains implementation instructions —
+  this skill's scaffolding + approval gate ALWAYS runs first, no exceptions. Scaffold feature
+  documentation structure for PSM NG projects. Creates Plan/, Estimation_Progress/, Feature/
+  folders with templated files (design spec, implementation plan, progress tracker, README).
+  Also use when user says "scaffold feature", "create feature docs", "new feature setup", or
+  invokes /bootstrap. Requires: feature name, target directory, and brief description.
+  Optionally accepts task list and estimates.
 ---
 
 # Bootstrap Superpowers — Feature Documentation Scaffolding
@@ -16,8 +21,14 @@ Auto-generate the standard feature documentation skeleton used across PSM NG pro
 
 ## Trigger
 
+**"bootstrap superpowers" is a hard, non-negotiable trigger** — treat it the same way
+`using-superpowers`/`using-copilot-superpowers` treat their own BLOCKING REQUIREMENT: never
+reasoned away, never silently downgraded to "just implement it" because the request seemed
+simple or the phrase appeared only as a trailing line. If the phrase is present, this skill's
+Execution Steps run before any code is written — full stop.
+
 Activate when user says any of:
-- "bootstrap superpowers"
+- "bootstrap superpowers" (hard trigger — see above)
 - "scaffold feature"
 - "create feature docs"
 - "new feature setup"
