@@ -135,6 +135,7 @@ VS Code's Copilot chat instructions (`codeGeneration.instructions`, `.prompt.md`
 | `claude-md-creator` | "/init", "create copilot-instructions.md" | Minimal, high-signal repo context files |
 | `self-consistency-reasoner` | invoked internally by debugging/verification | Multi-path reasoning + majority vote for high-stakes inference |
 | `token-efficiency`, `verification-before-completion` | every session / before "done" | Tool-call discipline, no false completion claims |
+| `graph-map` | "map this project", "build a graph/architecture map" | Builds a Graphify project map (symbols, relationships, communities, HTML graph); falls back to `graph-map-fabasoft.py` for Fabasoft `.ducx-*` DSL files |
 
 ### Copilot layer (VS Code User prompts + settings) -- mirrors the skills above
 
