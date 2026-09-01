@@ -51,16 +51,11 @@ source and all generated artifacts inside `OUTPUT_DIR`.
    - `graph.html` — interactive force graph.
    - `GRAPH_REPORT.md` — corpus, hubs, communities, cycles, and hyperedges.
    - `manifest.json` and cache metadata when produced by Graphify.
-5. If only `graph.json` exists, render the interactive graph:
-
-   ```powershell
-   graphify tree --graph "$OUTPUT_DIR\graph.json" `
-     --output "$OUTPUT_DIR\graph.html" `
-     --label "<project name> architecture and functionality map"
-   ```
-
-   For large graphs, prefer Graphify's normal `graph.html` from `extract`; use the tree
-   only as a fallback or supplementary navigation view.
+5. If only `graph.json` exists (no `graph.html` from `extract`), stop and report the
+   failure — missing LLM backend, wrong `PROJECT_ROOT` scope, or extraction error.
+   Do not fall back to `graphify tree`; its flat, low-detail render is not an acceptable
+   substitute for the real extract output. Ask the user to fix the backend/scope and
+   re-run step 2/3.
 6. Run focused checks:
 
    ```powershell
