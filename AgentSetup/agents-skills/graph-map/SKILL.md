@@ -40,22 +40,56 @@ source and all generated artifacts inside `OUTPUT_DIR`.
    graphify extract "$PROJECT_ROOT" --out "$OUTPUT_PARENT" --code-only --force
    ```
 
-   For unsupported DSL/document formats, run `graph-map-fabasoft.py` from this skill
-   when `.ducx-*` files are present. It reads the DSL locally and adds file,
-   object-model, form, binding, use-case, operation, property, import, inheritance,
-   containment, binding, and implementation nodes/edges without sending source to
-   a third party. Do not label inferred relationships as extracted.
+3a. Graphify's `classify_file()` returns no type for any extension outside its
+    `CODE_EXTENSIONS`/`DOC_EXTENSIONS`/etc. sets — those files are skipped by
+    `extract` in both step 2 (full LLM extract) and step 3 (code-only), not just
+    when no LLM backend is configured. Run these local extractors, in this repo,
+    whenever their file types are present, regardless of which of step 2/3 ran:
+
+    - `graph-map-fabasoft.py` when `.ducx-*` files are present. Reads the DSL
+      locally and adds file, object-model, form, binding, use-case, operation,
+      property, import, inheritance, containment, binding, and implementation
+      nodes/edges without sending source to a third party.
+    - `graph-map-powerfx.py` when `.fx` (Power Fx / PowerApps formula) files are
+      present — Power Fx has no `CODE_EXTENSIONS` entry and no tree-sitter grammar
+      exists for it, so `extract` silently skips these files in every mode. Reads
+      each `<Control>.<Property>.fx` file locally (no LLM, no third-party source
+      upload) and adds control, formula, builtin-call, navigation, variable,
+      data-source, and control-reference nodes/edges.
+
+    Do not label inferred relationships from either extractor as extracted. Merge
+    each extractor's `graph.json` output with the Graphify extraction output (union
+    nodes/links; if extract produced nothing, the local extractor's `graph.json` is
+    the graph).
 4. Ensure the output contains:
 
    - `graph.json` — symbols/files and typed edges.
    - `graph.html` — interactive force graph.
    - `GRAPH_REPORT.md` — corpus, hubs, communities, cycles, and hyperedges.
    - `manifest.json` and cache metadata when produced by Graphify.
-5. If only `graph.json` exists (no `graph.html` from `extract`), stop and report the
-   failure — missing LLM backend, wrong `PROJECT_ROOT` scope, or extraction error.
-   Do not fall back to `graphify tree`; its flat, low-detail render is not an acceptable
-   substitute for the real extract output. Ask the user to fix the backend/scope and
-   re-run step 2/3.
+5. If `graph.html` is missing after step 4, decide why before doing anything else:
+
+   - **A project made only of file types a local extractor (step 3a) covers** —
+     e.g. all-`.fx` Power Apps export, all-`.ducx-*` Fabasoft DSL — legitimately
+     has nothing for `extract` to find; this is expected, not a failure. Render the
+     merged `graph.json` for real with:
+
+     ```powershell
+     graphify cluster-only "$OUTPUT_DIR" --graph "$OUTPUT_DIR\graph.json"
+     ```
+
+     This runs the same community-clustering + force-graph viz pipeline `extract`
+     uses internally, producing the full interactive `graph.html` (search, node
+     info panel, community list) — not a flat tree. If an LLM backend is
+     configured, clustering will also name communities; otherwise they stay as
+     `Community N` placeholders, which is still acceptable.
+   - **Otherwise** (project has code/doc files `extract` should have picked up but
+     `graph.html` is still missing) — stop and report the failure: missing LLM
+     backend, wrong `PROJECT_ROOT` scope, or extraction error. Ask the user to fix
+     it and re-run step 2/3.
+
+   In neither case fall back to `graphify tree`; its flat, low-detail render is
+   never an acceptable substitute for the real clustered force-graph output.
 6. Run focused checks:
 
    ```powershell
