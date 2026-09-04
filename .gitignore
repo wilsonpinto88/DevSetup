@@ -50,3 +50,5 @@ context-snapshot.json
 # flag it, don't assume it's still valid.
 session-log.md
 state.md
+
+.worktrees/
