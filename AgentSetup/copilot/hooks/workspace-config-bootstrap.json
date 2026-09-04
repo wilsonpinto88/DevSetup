@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      {
+        "type": "command",
+        "bash": "bash \"$HOME/.copilot/hooks/scripts/workspace-config-bootstrap.sh\"",
+        "powershell": "pwsh -NoProfile -File \"$env:USERPROFILE\\.copilot\\hooks\\scripts\\workspace-config-bootstrap.ps1\"",
+        "timeoutSec": 15
+      }
+    ]
+  }
+}
