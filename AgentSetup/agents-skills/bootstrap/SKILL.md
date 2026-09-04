@@ -6,7 +6,7 @@ description: >
   it even if the request looks small, even if complexity classification elsewhere would call it
   MICRO/LIGHTWEIGHT, and even if the same message also contains implementation instructions —
   this skill's scaffolding + approval gate ALWAYS runs first, no exceptions. Scaffold feature
-  documentation structure for PSM NG projects. Creates Plan/, Estimation_Progress/, Feature/
+  documentation structure for any project. Creates Plan/, Estimation_Progress/, Feature/
   folders with templated files (design spec, implementation plan, progress tracker, README).
   Also use when user says "scaffold feature", "create feature docs", "new feature setup", or
   invokes /bootstrap. Requires: feature name, target directory, and brief description.
@@ -17,7 +17,7 @@ description: >
 
 ## Purpose
 
-Auto-generate the standard feature documentation skeleton used across PSM NG projects. Produces a consistent, ready-to-fill structure that matches the established template (reference: `Docs/Features/PSM_NG_Import_Risks_From_Project_Plan/`).
+Auto-generate a standard feature documentation skeleton for any project. Produces a consistent, ready-to-fill structure: design spec, phased implementation plan, and a progress tracker with pace metrics.
 
 ## Trigger
 
@@ -40,9 +40,9 @@ Gather these before scaffolding (ask user if not provided):
 
 | Input | Description | Example |
 |---|---|---|
-| `FEATURE_NAME` | Short feature identifier | "Actions Remove PSR Filter" |
-| `TARGET_DIR` | Where to create the structure | `Docs/PSR/Feature/Actions` |
-| `DESCRIPTION` | One-line summary | "Remove PSR dropdown filter from Actions screen" |
+| `FEATURE_NAME` | Short feature identifier | "Add CSV Export" |
+| `TARGET_DIR` | Where to create the structure | `Docs/Features/CsvExport` |
+| `DESCRIPTION` | One-line summary | "Add CSV export button to the reports screen" |
 | `DATE` | ISO date (default: today) | `2026-07-13` |
 
 ## Optional Inputs
@@ -50,9 +50,16 @@ Gather these before scaffolding (ask user if not provided):
 | Input | Description | Default |
 |---|---|---|
 | `TASKS` | List of tasks with estimates | Empty (fill later) |
-| `APP_NAME` | Application name | "Project Status Review App" |
-| `ENVIRONMENT` | Target environment | "MyApp-DEV" |
+| `PROJECT_NAME` | Project/app name | Auto-detected (see below), confirmed with user before use |
+| `ENVIRONMENT` | Target environment | `(not specified)` if not provided |
 | `STATUS` | Initial status | "📋 Proposal — awaiting PM approval" |
+| `WORK_SCHEDULE` | Daily work window + lunch break | `Mon-Fri, 09:00-18:00, 1h lunch (13:00-14:00) -> 8h/day` |
+
+**`PROJECT_NAME` auto-detection** (first match wins, always shown to the user for confirmation before any file is written — never silently trusted):
+1. `name` field from `package.json` at repo root, if present.
+2. `name` field from `pyproject.toml` at repo root, if present.
+3. Repo root folder name.
+4. Ask the user.
 
 ## Output Structure
 
@@ -103,7 +110,7 @@ Gather these before scaffolding (ask user if not provided):
 
 ## Context
 
-- **App**: {APP_NAME}
+- **Project**: {PROJECT_NAME}
 - **Environment**: {ENVIRONMENT}
 - **Date**: {DATE}
 - **Status**: {STATUS}
@@ -112,12 +119,12 @@ Gather these before scaffolding (ask user if not provided):
 ### Plan/{DATE}-{slug}-design.md
 
 ```markdown
-# PSM NG - {FEATURE_NAME} — Design
+# {PROJECT_NAME} — {FEATURE_NAME} — Design
 
 ## Context
 
 - Environment: {ENVIRONMENT}
-- App: {APP_NAME}
+- Project: {PROJECT_NAME}
 - Date: {DATE}
 
 ## Problem
@@ -160,7 +167,7 @@ Gather these before scaffolding (ask user if not provided):
 ### Plan/{DATE}-{slug}-plan.md
 
 ```markdown
-# PSM NG - {FEATURE_NAME} — Implementation Plan
+# {PROJECT_NAME} — {FEATURE_NAME} — Implementation Plan
 
 Design reference: [{DATE}-{slug}-design.md]({DATE}-{slug}-design.md)
 
@@ -183,7 +190,7 @@ Design reference: [{DATE}-{slug}-design.md]({DATE}-{slug}-design.md)
 ### Estimation_Progress/progress.md
 
 ```markdown
-# PSM NG — {FEATURE_NAME} — Progress
+# {PROJECT_NAME} — {FEATURE_NAME} — Progress
 
 Plan reference: [{DATE}-{slug}-plan.md](../Plan/{DATE}-{slug}-plan.md)
 Started: N/A (provide exact date + time when work actually begins, e.g. "2026-07-13 09:00" — do not fill this in at scaffold time)
@@ -217,8 +224,8 @@ Started: N/A (provide exact date + time when work actually begins, e.g. "2026-07
 
 Update the **Pace Light** line every time `Pace ratio` is recomputed (i.e. every time a task is marked ✅ Done) — pick the row whose range contains the current ratio, don't leave it stale from a previous update.
 
-**Work Schedule** (fixed constant, applies to every feature — not configurable per-feature unless the user says otherwise):
-- Monday–Friday, 09:00–18:00, with a 1h lunch break built in → 8h effective capacity per full business day.
+**Work Schedule** ({WORK_SCHEDULE}, applies to this feature — override at scaffold time via the `WORK_SCHEDULE` input, default shown):
+- Monday–Friday, {WORK_START_HOUR}:00–{WORK_END_HOUR}:00, with a lunch break built in.
 - No capacity counted on weekends or outside this window.
 
 **Formula** (recompute at the exact moment a task is marked ✅ Done — mid-day, not just at day's end or on request):
@@ -241,7 +248,7 @@ One row per calendar day from `Started` to the most recent update. This is the s
 | (no rows yet — added once `Started` is provided) | | | | |
 | | | | **Cumulative (→ Elapsed capacity so far)** | **Σh** |
 
-- **Scheduled Hours**: 8h for Mon–Fri (per Work Schedule), 0h for Sat/Sun (no row needed for weekend days with 0h, or omit weekend rows entirely). On the `Started` day, scheduled hours run from the actual start time to 18:00 (minus lunch if it overlaps), not the full 8h.
+- **Scheduled Hours**: per `WORK_SCHEDULE` for Mon–Fri (default 8h), 0h for Sat/Sun (no row needed for weekend days with 0h, or omit weekend rows entirely). On the `Started` day, scheduled hours run from the actual start time to `{WORK_END_HOUR}`:00 (minus lunch if it overlaps), not the full day.
 - **Interruptions / Breaks**: meetings, extra breaks, leave, etc. that the user reports for that specific day — record duration and a short reason (e.g. "1h — sprint planning"). Only the standard 1h lunch is pre-built into Scheduled Hours; anything beyond that goes here. Never estimate or backfill — only log what the user actually reports.
 - **Net Hours Worked** = Scheduled Hours − Interruptions/Breaks for that day. On the current (still in-progress) day, cap Scheduled Hours at the real elapsed time so far (via system clock), not the full day, since the day isn't over yet.
 - Add a new row automatically when the day changes (per system clock), and update the current day's row + the Efficiency Metric every time a task is marked ✅ Done.
@@ -276,7 +283,7 @@ Self-contained HTML file, Highcharts via CDN, no build step. Embed the raw struc
 Three charts:
 1. **Double-ring donut** — inner ring: Elapsed Capacity only (a single slice, labeled "EC"); outer ring: one slice per task, sized by estimate, colored by its phase (adjacent shades so phases cluster visually). A donut can't represent Total Estimate vs Elapsed Capacity together once EC exceeds TE (slices must sum to 100%, so overrun has no visual representation).
 2. **Phase combo chart** — Estimate vs Elapsed Capacity per phase as grouped columns (Delivered always equals Estimate once a task is Done, so it's not a useful comparison here — Elapsed Capacity per phase is), a per-phase Pace Ratio line on a secondary right-hand axis (>1.0 = ahead of pace for that phase), and a small corner donut showing Elapsed Capacity composition by phase (with total Elapsed Capacity labeled in the center). Combines what used to be three separate charts into one, modeled on Highcharts' "column, line and pie" combo pattern.
-3. **Gantt timeline** — phases as collapsible parent rows, tasks as child bars sized by estimate, positioned using each task's `Completed` timestamp (bar end = Completed, bar start = walked backward through business hours only — Mon–Fri, 09:00–18:00, 1h lunch, same Work Schedule constant as the Efficiency Metric — since no separate "task started" time is tracked). Requires the Highcharts Gantt module (`modules/gantt.js`) loaded alongside core Highcharts. A naive raw-hour subtraction would land some task starts on weekends/off-hours; the backward walk (minute-by-minute, skipping non-work time) avoids that.
+3. **Gantt timeline** — phases as collapsible parent rows, tasks as child bars sized by estimate, positioned using each task's `Completed` timestamp (bar end = Completed, bar start = walked backward through business hours only, per the feature's `WORK_SCHEDULE` (default Mon–Fri, 09:00–18:00, 1h lunch), same schedule as the Efficiency Metric — since no separate "task started" time is tracked). Requires the Highcharts Gantt module (`modules/gantt.js`) loaded alongside core Highcharts. A naive raw-hour subtraction would land some task starts on weekends/off-hours; the backward walk (minute-by-minute, skipping non-work time) avoids that.
 
 ```html
 <!DOCTYPE html>
@@ -408,8 +415,8 @@ Three charts:
       const day = date.getDay(); // 0 = Sun, 6 = Sat
       if (day === 0 || day === 6) return false;
       const h = date.getHours() + date.getMinutes() / 60;
-      if (h < 9 || h >= 18) return false;
-      if (h >= 13 && h < 14) return false; // lunch
+      if (h < {WORK_START_HOUR} || h >= {WORK_END_HOUR}) return false;
+      if (h >= {LUNCH_START_HOUR} && h < {LUNCH_END_HOUR}) return false; // lunch
       return true;
     }
     function subtractWorkHours(endMs, hours) {
@@ -439,9 +446,9 @@ Three charts:
         if (day === 0 || day === 6) {
           breaks.push({ from: dayMs, to: dayMs + 24 * 3600000 }); // whole weekend day
         } else {
-          breaks.push({ from: dayMs, to: dayMs + 9 * 3600000 });                // 00:00-09:00
-          breaks.push({ from: dayMs + 13 * 3600000, to: dayMs + 14 * 3600000 }); // 13:00-14:00 lunch
-          breaks.push({ from: dayMs + 18 * 3600000, to: dayMs + 24 * 3600000 }); // 18:00-24:00
+          breaks.push({ from: dayMs, to: dayMs + {WORK_START_HOUR} * 3600000 });                // 00:00-{WORK_START_HOUR}:00
+          breaks.push({ from: dayMs + {LUNCH_START_HOUR} * 3600000, to: dayMs + {LUNCH_END_HOUR} * 3600000 }); // lunch
+          breaks.push({ from: dayMs + {WORK_END_HOUR} * 3600000, to: dayMs + 24 * 3600000 });   // {WORK_END_HOUR}:00-24:00
         }
         cursor.setDate(cursor.getDate() + 1);
       }
@@ -475,7 +482,7 @@ Three charts:
       // scroll/expand, regardless of how many phases or tasks a feature has.
       chart: { height: 90 + ganttSeries.length * 32 },
       title: { text: 'Phase & Task Timeline' },
-      subtitle: { text: 'Work schedule: Mon–Fri, 09:00–18:00, 1h lunch — non-working time is compressed out of the axis below, not just excluded from bar positions' },
+      subtitle: { text: 'Work schedule: {WORK_SCHEDULE} — non-working time is compressed out of the axis below, not just excluded from bar positions' },
       xAxis: {
         currentDateIndicator: false,
         breaks: computeNonWorkingBreaks(ganttMin, ganttMax)
@@ -505,14 +512,17 @@ When there's more than one completed feature, a separate step could scan every `
 5. **If tasks not provided**, use placeholder rows with "(fill)" markers
 6. **Date format**: YYYY-MM-DD in filenames, DD-MM-YYYY in prose only where locale demands it
 7. **NEVER implement code as part of this skill** — regardless of how the user's request is phrased (even if it includes implementation details, "implement", "build", "code this", etc. earlier in the same message). This skill's scope ends at documentation.
-8. **When a task is marked ✅ Done**, immediately (not batched, not deferred to day's end) record the real system-clock date+time in that task's `Completed` column, then recompute the Efficiency Metric table from the Daily Log (fixed Work Schedule: Mon–Fri, 09:00–18:00, 1h lunch). This means: update the current day's Net Hours Worked to reflect real elapsed time at the moment of completion, re-sum Elapsed capacity so far, re-add the task's full estimate to Delivered, and recompute Pace ratio — every single time, regardless of whether the task took more or less real time than its estimate. Never assume or default a value — if `Started` or a day's Interruptions/Breaks haven't been explicitly provided by the user, ask for it or leave the field as N/A. A metric showing a suspiciously round/trivial value (e.g. Pace ratio always exactly 1.0) is a sign it was assumed rather than measured — verify before writing it.
+8. **When a task is marked ✅ Done**, immediately (not batched, not deferred to day's end) record the real system-clock date+time in that task's `Completed` column, then recompute the Efficiency Metric table from the Daily Log (per the feature's `WORK_SCHEDULE`, default Mon–Fri, 09:00–18:00, 1h lunch). This means: update the current day's Net Hours Worked to reflect real elapsed time at the moment of completion, re-sum Elapsed capacity so far, re-add the task's full estimate to Delivered, and recompute Pace ratio — every single time, regardless of whether the task took more or less real time than its estimate. Never assume or default a value — if `Started` or a day's Interruptions/Breaks haven't been explicitly provided by the user, ask for it or leave the field as N/A. A metric showing a suspiciously round/trivial value (e.g. Pace ratio always exactly 1.0) is a sign it was assumed rather than measured — verify before writing it.
 9. **When the last task is marked ✅ Done** (TOTAL becomes N/N done), ask the user (yes/no) whether to generate the performance dashboard — see "Dashboard Generation" above. Don't generate it unprompted, and don't skip asking.
 10. **Timestamps come from the system clock, not hand-typed guesses.** When the user confirms "I'm starting now" (or similarly), fetch the real current time (e.g. `Get-Date` in PowerShell) and use that exact value for `Started` — don't ask the user to type a time themselves, and don't estimate one. Likewise, whenever `Elapsed capacity so far` is recomputed, fetch the current system time for "now" rather than assuming today's date is accurate. This only replaces *how the timestamp is captured*, not *whether work has started/stopped* — that decision, and all Interruptions/Stops entries, must still come from the user; there is no calendar access, idle-time detection, or presence monitoring available to infer it automatically.
 11. **Emoji-safe editing**: progress.md is full of non-BMP emoji (🚀/🟢/🟡/🔴 in Pace Light, ✅/⏳ in Status) stored as UTF-16 surrogate pairs. When updating a row/cell that contains one, always replace the **entire row or cell** in a single oldString/newString pair — never a partial substring splice that could land mid-emoji, since a cut inside a surrogate pair silently corrupts it into a lone invalid surrogate (renders as �).
+12. **`PROJECT_NAME` is auto-detected but always confirmed.** Before scaffolding, show the detected value (source: package.json / pyproject.toml / folder name) and ask the user to confirm or override it — never write files using an unconfirmed guess.
+13. **`WORK_SCHEDULE` default is Mon-Fri 09:00-18:00 with a 1h lunch (13:00-14:00), 8h/day.** If the user specifies a different schedule, substitute it into both the prose (Rules/Efficiency Metric sections) and the four dashboard JS hour constants (`{WORK_START_HOUR}`, `{WORK_END_HOUR}`, `{LUNCH_START_HOUR}`, `{LUNCH_END_HOUR}`) — keep both in sync, never update one without the other. If the user's schedule description can't be parsed into four numeric hour values, fall back to the default and note in the generated README that the schedule couldn't be parsed.
 
 ## Execution Steps
 
 1. Collect/confirm required inputs (ask if missing)
+1a. Auto-detect PROJECT_NAME (package.json → pyproject.toml → repo folder name) and show it to the user for confirmation or override before proceeding — never write files using an unconfirmed guess.
 2. Generate slug from FEATURE_NAME
 3. Create folders: `{TARGET_DIR}/Plan/`, `{TARGET_DIR}/Estimation_Progress/`, `{TARGET_DIR}/Feature/`
 4. Create files from templates, substituting variables
@@ -520,4 +530,4 @@ When there's more than one completed feature, a separate step could scan every `
 6. **Ask the user**: "Documentation scaffolded. Ready to start implementation?" (yes/no question, using the ask-questions tool if available)
    - If **yes**: proceed to implement the feature, following standard workflow (TDD, security gates, workflow routing from CLAUDE.MD)
    - If **no** (or no response yet): stop here. Do not write or modify any code. Wait for the user's next explicit instruction.
-6. Update `/memories/repo/state.md` with new feature reference
+7. Update `/memories/repo/state.md` with new feature reference
