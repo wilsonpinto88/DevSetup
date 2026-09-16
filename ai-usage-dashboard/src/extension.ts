@@ -7,9 +7,16 @@ import { ScanCache } from './logScanner/scanCache';
 import { computeTotals, groupByModel, groupByWorkspace, computeDailySeries, TimeRange } from './aggregator';
 import { resolveAllowance } from './copilotAllowance';
 import { createOrShowPanel, postDashboardData } from './webviewPanel';
+import { UsageEvent } from './logScanner/types';
 
 const SCAN_CACHE_KEY = 'aiUsage.scanCache';
+const EVENTS_KEY = 'aiUsage.accumulatedEvents';
 let scanCacheMemo: ScanCache = {};
+
+// scanAll only returns bytes appended since the last scan (see scanCache.ts),
+// so each call's `events` is a delta, not the full picture — it must be
+// accumulated across refreshes, not treated as the complete dataset.
+let accumulatedEvents: UsageEvent[] = [];
 
 function resolveDefaultPath(configuredOverride: string, defaultRelativeToHome: string): string {
   return configuredOverride && configuredOverride.trim().length > 0
@@ -23,9 +30,12 @@ async function refreshAndRender(context: vscode.ExtensionContext, range: TimeRan
   const copilotRoot = resolveDefaultPath(config.get<string>('copilotLogsPath', ''), '.copilot/session-state');
 
   const priorCache = context.globalState.get<ScanCache>(SCAN_CACHE_KEY, scanCacheMemo);
-  const { events, cache } = scanAll(claudeRoot, copilotRoot, priorCache);
+  const { events: newEvents, cache } = scanAll(claudeRoot, copilotRoot, priorCache);
+  accumulatedEvents = accumulatedEvents.concat(newEvents);
+  const events = accumulatedEvents;
   scanCacheMemo = cache;
   await context.globalState.update(SCAN_CACHE_KEY, cache);
+  await context.globalState.update(EVENTS_KEY, accumulatedEvents);
 
   const manualAllowance = config.get<number | null>('copilotMonthlyAllowance', null);
   const allowance = await resolveAllowance({
@@ -53,6 +63,7 @@ async function refreshAndRender(context: vscode.ExtensionContext, range: TimeRan
 
 export function activate(context: vscode.ExtensionContext) {
   scanCacheMemo = context.globalState.get<ScanCache>(SCAN_CACHE_KEY, {});
+  accumulatedEvents = context.globalState.get<UsageEvent[]>(EVENTS_KEY, []);
 
   context.subscriptions.push(
     vscode.commands.registerCommand('aiUsage.open', async () => {
