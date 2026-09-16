@@ -17,7 +17,8 @@
   "contributes": {
     "commands": [
       { "command": "aiUsage.open", "title": "AI Usage: Open Dashboard" },
-      { "command": "aiUsage.refresh", "title": "AI Usage: Refresh Now" }
+      { "command": "aiUsage.refresh", "title": "AI Usage: Refresh Now" },
+      { "command": "aiUsage.resetCache", "title": "AI Usage: Reset Cache & Rescan" }
     ],
     "configuration": {
       "title": "AI Usage Dashboard",

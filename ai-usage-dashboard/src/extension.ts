@@ -11,6 +11,7 @@ import { UsageEvent } from './logScanner/types';
 
 const SCAN_CACHE_KEY = 'aiUsage.scanCache';
 const EVENTS_KEY = 'aiUsage.accumulatedEvents';
+const outputChannel = vscode.window.createOutputChannel('AI Usage Dashboard');
 let scanCacheMemo: ScanCache = {};
 
 // scanAll only returns bytes appended since the last scan (see scanCache.ts),
@@ -30,12 +31,20 @@ async function refreshAndRender(context: vscode.ExtensionContext, range: TimeRan
   const copilotRoot = resolveDefaultPath(config.get<string>('copilotLogsPath', ''), '.copilot/session-state');
 
   const priorCache = context.globalState.get<ScanCache>(SCAN_CACHE_KEY, scanCacheMemo);
+  const priorCacheFileCount = Object.keys(priorCache).length;
+  const priorAccumulatedCount = accumulatedEvents.length;
   const { events: newEvents, cache } = scanAll(claudeRoot, copilotRoot, priorCache);
   accumulatedEvents = accumulatedEvents.concat(newEvents);
   const events = accumulatedEvents;
   scanCacheMemo = cache;
   await context.globalState.update(SCAN_CACHE_KEY, cache);
   await context.globalState.update(EVENTS_KEY, accumulatedEvents);
+
+  outputChannel.appendLine(
+    `[${new Date().toISOString()}] refresh(range=${range}) claudeRoot=${claudeRoot} copilotRoot=${copilotRoot} ` +
+      `priorCacheFiles=${priorCacheFileCount} priorAccumulated=${priorAccumulatedCount} newEvents=${newEvents.length} ` +
+      `totalAccumulated=${accumulatedEvents.length} nowCacheFiles=${Object.keys(cache).length}`
+  );
 
   const manualAllowance = config.get<number | null>('copilotMonthlyAllowance', null);
   const allowance = await resolveAllowance({
@@ -73,6 +82,14 @@ export function activate(context: vscode.ExtensionContext) {
       await refreshAndRender(context, 'month');
     }),
     vscode.commands.registerCommand('aiUsage.refresh', async () => {
+      await refreshAndRender(context, 'month');
+    }),
+    vscode.commands.registerCommand('aiUsage.resetCache', async () => {
+      scanCacheMemo = {};
+      accumulatedEvents = [];
+      await context.globalState.update(SCAN_CACHE_KEY, {});
+      await context.globalState.update(EVENTS_KEY, []);
+      outputChannel.appendLine(`[${new Date().toISOString()}] cache reset — next refresh does a full rescan`);
       await refreshAndRender(context, 'month');
     })
   );

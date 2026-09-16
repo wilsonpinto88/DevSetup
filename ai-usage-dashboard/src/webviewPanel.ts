@@ -51,7 +51,7 @@ export function createOrShowPanel(
   panel.webview.html = html;
 
   panel.webview.onDidReceiveMessage((message) => {
-    if (message?.type === 'rangeChange') {
+    if (message?.type === 'rangeChange' || message?.type === 'refresh') {
       onRangeChange(message.range as TimeRange);
     }
   });

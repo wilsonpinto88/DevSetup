@@ -12,6 +12,11 @@
     return new Intl.NumberFormat().format(Math.round(n));
   }
 
+  function shortDateLabel(bucket) {
+    // bucket is ISO 'YYYY-MM-DD' -> 'MM-DD'
+    return bucket.length >= 10 ? bucket.slice(5, 10) : bucket;
+  }
+
   function makeGradient(ctx, canvas, colorRgb) {
     const height = canvas.height || 300;
     const gradient = ctx.createLinearGradient(0, 0, 0, height);
@@ -45,7 +50,7 @@
   function renderDailyChart(dailySeries) {
     const canvas = document.getElementById('dailyChart');
     const ctx = canvas.getContext('2d');
-    const labels = dailySeries.map((p) => p.bucket);
+    const labels = dailySeries.map((p) => shortDateLabel(p.bucket));
     const inputData = dailySeries.map((p) => p.inputTokens);
     const outputData = dailySeries.map((p) => p.outputTokens);
     const inputGradient = makeGradient(ctx, canvas, '88, 166, 255');
@@ -146,9 +151,16 @@
     vscode.postMessage({ type: 'rangeChange', range: currentRange });
   });
 
+  document.getElementById('refreshBtn').addEventListener('click', () => {
+    const btn = document.getElementById('refreshBtn');
+    btn.classList.add('spinning');
+    vscode.postMessage({ type: 'refresh', range: currentRange });
+  });
+
   window.addEventListener('message', (event) => {
     const message = event.data;
     if (message.type === 'dashboardData') {
+      document.getElementById('refreshBtn').classList.remove('spinning');
       render(message.data);
     }
   });
