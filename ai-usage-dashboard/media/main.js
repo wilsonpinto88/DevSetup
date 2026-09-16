@@ -184,16 +184,16 @@
     const sorted = [...byWorkspace].sort(
       (a, b) => b.inputTokens + b.outputTokens - (a.inputTokens + a.outputTokens)
     );
-    const maxTokens = Math.max(...sorted.map((g) => g.inputTokens + g.outputTokens), 1);
+    const grandTotal = sorted.reduce((sum, g) => sum + g.inputTokens + g.outputTokens, 0) || 1;
     el.innerHTML = sorted
       .map((g) => {
         const total = g.inputTokens + g.outputTokens;
-        const pct = Math.round((total / maxTokens) * 100);
+        const pct = Math.round((total / grandTotal) * 100);
         return `
           <div class="workspace-row">
             <div class="workspace-header">
               <span class="workspace-name">${g.key}</span>
-              <span class="workspace-total">${fmt(total)} tokens</span>
+              <span class="workspace-total">${fmt(total)} tokens (${pct}%)</span>
             </div>
             <div class="workspace-bar-track"><div class="workspace-bar-fill" style="width:${pct}%"></div></div>
             <div class="workspace-stats">
