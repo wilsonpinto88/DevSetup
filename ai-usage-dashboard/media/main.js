@@ -101,19 +101,24 @@
           m.costUsd === undefined
             ? '<div class="pricing-note">No confirmed pricing rate for this model — cost omitted from totals.</div>'
             : '';
+        const stats = [
+          { label: 'Messages', value: fmt(m.eventCount) },
+          { label: 'Input Tokens', value: fmt(m.inputTokens) },
+          { label: 'Output Tokens', value: fmt(m.outputTokens) },
+          { label: 'Input Cache (Miss)', value: fmt(m.cacheWriteTokens) },
+          { label: 'Input Cache (Hit)', value: fmt(m.cacheReadTokens) },
+          { label: 'Cache Hit Rate', value: `${hitRate}%` },
+        ];
         return `
           <div class="model-usage-row">
             <div class="model-header">
-              <span>${m.key}</span>
+              <span class="model-name">${m.key}</span>
               <span class="model-cost">${fmtUsd(m.costUsd)}</span>
             </div>
             <div class="model-stats">
-              <div>Input Tokens <span class="value">${fmt(m.inputTokens)}</span></div>
-              <div>Output Tokens <span class="value">${fmt(m.outputTokens)}</span></div>
-              <div>Input Cache (Miss) <span class="value">${fmt(m.cacheWriteTokens)}</span></div>
-              <div>Input Cache (Hit) <span class="value">${fmt(m.cacheReadTokens)}</span></div>
-              <div>Cache Hit Rate <span class="value">${hitRate}%</span></div>
-              <div>Messages <span class="value">${fmt(m.eventCount)}</span></div>
+              ${stats
+                .map((s) => `<div class="stat"><span class="stat-label">${s.label}</span><span class="stat-value">${s.value}</span></div>`)
+                .join('')}
             </div>
             ${pricingNote}
           </div>`;

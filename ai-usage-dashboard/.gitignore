@@ -1,3 +1,6 @@
 out/
 node_modules/
 *.vsix
+
+# AI assistant artifacts
+context-snapshot.json

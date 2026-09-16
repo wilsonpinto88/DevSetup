@@ -123,41 +123,64 @@ body {
   vertical-align: middle;
 }
 
-.model-usage-row {
-  border-bottom: 1px solid var(--vscode-widget-border);
-  padding: 10px 0;
+.model-usage-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
-.model-usage-row:last-child {
-  border-bottom: none;
+.model-usage-row {
+  background: var(--vscode-editor-background);
+  border: 1px solid var(--vscode-widget-border);
+  border-radius: 6px;
+  padding: 14px 16px;
 }
 
 .model-usage-row .model-header {
   display: flex;
   justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.model-usage-row .model-name {
   font-weight: 600;
-  margin-bottom: 6px;
+  font-size: 1.05em;
 }
 
 .model-usage-row .model-cost {
+  font-size: 1.2em;
+  font-weight: 600;
   color: var(--vscode-charts-green, #3fb950);
 }
 
 .model-usage-row .model-stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 4px 16px;
-  font-size: 0.9em;
-  color: var(--vscode-descriptionForeground);
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 10px 16px;
 }
 
-.model-usage-row .model-stats span.value {
+.model-usage-row .model-stats .stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.model-usage-row .model-stats .stat-label {
+  font-size: 0.78em;
+  color: var(--vscode-descriptionForeground);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.model-usage-row .model-stats .stat-value {
+  font-size: 1em;
+  font-weight: 500;
   color: var(--vscode-foreground);
-  float: right;
 }
 
 .model-usage-row .pricing-note {
-  margin-top: 6px;
+  margin-top: 10px;
   font-size: 0.8em;
   color: var(--vscode-descriptionForeground);
 }
