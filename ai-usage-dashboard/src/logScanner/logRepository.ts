@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { UsageEvent } from './types';
 import { parseClaudeCodeFile } from './claudeCodeParser';
-import { parseCopilotFile, extractWorkspaceFromYaml } from './copilotParser';
+import { readCopilotEvents, CopilotDbCursor } from './copilotDb';
 import { scanFile, ScanCache, FileSystemLike } from './scanCache';
 
 const realFs: FileSystemLike = {
@@ -57,42 +57,25 @@ function scanClaudeCode(claudeRoot: string, cache: ScanCache): { events: UsageEv
   return { events, cache: nextCache };
 }
 
-function scanCopilot(copilotRoot: string, cache: ScanCache): { events: UsageEvent[]; cache: ScanCache } {
-  if (!fs.existsSync(copilotRoot)) {
-    return { events: [], cache };
-  }
-  let events: UsageEvent[] = [];
-  let nextCache = cache;
-  const sessionDirs = fs.readdirSync(copilotRoot, { withFileTypes: true }).filter((e) => e.isDirectory());
-  for (const dirEntry of sessionDirs) {
-    const sessionId = dirEntry.name;
-    const sessionDir = path.join(copilotRoot, sessionId);
-    const eventsPath = path.join(sessionDir, 'events.jsonl');
-    const workspaceYamlPath = path.join(sessionDir, 'workspace.yaml');
-    if (!fs.existsSync(eventsPath)) {
-      continue;
-    }
-    const workspaceRaw = fs.existsSync(workspaceYamlPath)
-      ? extractWorkspaceFromYaml(fs.readFileSync(workspaceYamlPath, 'utf8'))
-      : '';
-    const { newContent, cache: updatedCache } = scanFile(realFs, eventsPath, nextCache);
-    nextCache = updatedCache;
-    if (newContent) {
-      events = events.concat(parseCopilotFile(newContent, sessionId, workspaceRaw));
-    }
-  }
-  return { events, cache: nextCache };
+export interface ScanAllResult {
+  events: UsageEvent[];
+  cache: ScanCache;
+  copilotCursor: CopilotDbCursor;
+  copilotError?: string;
 }
 
 export function scanAll(
   claudeRoot: string,
-  copilotRoot: string,
-  cache: ScanCache
-): { events: UsageEvent[]; cache: ScanCache } {
+  copilotDbPath: string,
+  cache: ScanCache,
+  copilotCursor: CopilotDbCursor = { lastId: 0 }
+): ScanAllResult {
   const claudeResult = scanClaudeCode(claudeRoot, cache);
-  const copilotResult = scanCopilot(copilotRoot, claudeResult.cache);
+  const copilotResult = readCopilotEvents(copilotDbPath, copilotCursor);
   return {
     events: claudeResult.events.concat(copilotResult.events),
-    cache: copilotResult.cache,
+    cache: claudeResult.cache,
+    copilotCursor: copilotResult.cursor,
+    copilotError: copilotResult.error,
   };
 }

@@ -1,0 +1,91 @@
+// ai-usage-dashboard/src/logScanner/copilotDb.ts
+import * as fs from 'fs';
+import { UsageEvent } from './types';
+import { normalizeWorkspace } from './workspaceNormalize';
+
+export interface CopilotDbCursor {
+  lastId: number;
+}
+
+export interface CopilotDbResult {
+  events: UsageEvent[];
+  cursor: CopilotDbCursor;
+  error?: string;
+}
+
+interface AssistantUsageRow {
+  id: number;
+  session_id: string;
+  model: string | null;
+  input_tokens: number | null;
+  output_tokens: number | null;
+  cache_read_tokens: number | null;
+  cache_write_tokens: number | null;
+  total_nano_aiu: number | null;
+  request_multiplier: number | null;
+  created_at: string;
+  workspace: string | null;
+}
+
+// ~/.copilot/session-store.db's assistant_usage_events table is one row per
+// real model call (id is a monotonic autoincrement), unlike events.jsonl's
+// session.usage_checkpoint records, which are periodic/cumulative snapshots
+// that double- and triple-count the same usage when summed. This table also
+// carries real output_tokens, which events.jsonl never reports at all.
+export function readCopilotEvents(dbPath: string, cursor: CopilotDbCursor): CopilotDbResult {
+  if (!fs.existsSync(dbPath)) {
+    return { events: [], cursor };
+  }
+
+  let DatabaseSync: any;
+  try {
+    // node:sqlite is a stable built-in on modern Node, but the extension
+    // host's bundled Node version isn't guaranteed — degrade gracefully
+    // instead of crashing the whole scan if it's ever unavailable.
+    ({ DatabaseSync } = require('node:sqlite'));
+  } catch (e) {
+    return { events: [], cursor, error: `node:sqlite unavailable: ${(e as Error).message}` };
+  }
+
+  let db: any;
+  try {
+    db = new DatabaseSync(dbPath, { readOnly: true });
+    const rows = db
+      .prepare(
+        `SELECT e.id, e.session_id, e.model, e.input_tokens, e.output_tokens,
+                e.cache_read_tokens, e.cache_write_tokens, e.total_nano_aiu,
+                e.request_multiplier, e.created_at, s.cwd as workspace
+         FROM assistant_usage_events e
+         LEFT JOIN sessions s ON s.id = e.session_id
+         WHERE e.id > ?
+         ORDER BY e.id`
+      )
+      .all(cursor.lastId) as AssistantUsageRow[];
+
+    let maxId = cursor.lastId;
+    const events: UsageEvent[] = rows.map((row) => {
+      maxId = Math.max(maxId, row.id);
+      return {
+        source: 'copilot',
+        sessionId: row.session_id,
+        timestamp: row.created_at,
+        model: row.model ?? 'unknown',
+        workspace: normalizeWorkspace(row.workspace ?? ''),
+        inputTokens: row.input_tokens ?? 0,
+        outputTokens: row.output_tokens ?? 0,
+        cacheReadTokens: row.cache_read_tokens ?? 0,
+        cacheWriteTokens: row.cache_write_tokens ?? 0,
+        nanoAiu: row.total_nano_aiu ?? 0,
+        premiumRequests: row.request_multiplier ?? 0,
+      };
+    });
+
+    return { events, cursor: { lastId: maxId } };
+  } catch (e) {
+    // Most commonly a locked/busy file (Copilot CLI has it open) — treat as
+    // "no new data this scan" rather than failing the whole refresh.
+    return { events: [], cursor, error: (e as Error).message };
+  } finally {
+    db?.close?.();
+  }
+}

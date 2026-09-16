@@ -41,7 +41,7 @@
         "aiUsage.copilotLogsPath": {
           "type": "string",
           "default": "",
-          "description": "Override for the Copilot session-state directory. Empty uses the default ~/.copilot/session-state."
+          "description": "Override for the Copilot CLI session-store.db path. Empty uses the default ~/.copilot/session-store.db."
         }
       }
     }

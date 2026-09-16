@@ -1,0 +1,114 @@
+// ai-usage-dashboard/test/copilotDb.test.ts
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { createRequire } from 'node:module';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
+import { readCopilotEvents } from '../src/logScanner/copilotDb';
+
+// Vite's static import graph mishandles the "node:" prefix for this builtin
+// (drops it, then fails to resolve the bare "sqlite" package) — going
+// through require() sidesteps Vite's module resolution entirely.
+const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite');
+
+let tmpRoot: string;
+let dbPath: string;
+
+function makeDb(): any {
+  const db = new DatabaseSync(dbPath);
+  db.exec(`
+    CREATE TABLE sessions (id TEXT PRIMARY KEY, cwd TEXT);
+    CREATE TABLE assistant_usage_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      session_id TEXT,
+      model TEXT,
+      input_tokens INTEGER,
+      output_tokens INTEGER,
+      cache_read_tokens INTEGER,
+      cache_write_tokens INTEGER,
+      total_nano_aiu INTEGER,
+      request_multiplier REAL,
+      created_at TEXT
+    );
+  `);
+  return db;
+}
+
+beforeEach(() => {
+  tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'copilot-db-test-'));
+  dbPath = path.join(tmpRoot, 'session-store.db');
+});
+
+afterEach(() => {
+  fs.rmSync(tmpRoot, { recursive: true, force: true });
+});
+
+describe('readCopilotEvents', () => {
+  it('returns empty events without error when the db file does not exist', () => {
+    const result = readCopilotEvents(path.join(tmpRoot, 'missing.db'), { lastId: 0 });
+    expect(result.events).toEqual([]);
+    expect(result.cursor).toEqual({ lastId: 0 });
+    expect(result.error).toBeUndefined();
+  });
+
+  it('maps assistant_usage_events rows joined with sessions.cwd into UsageEvents', () => {
+    const db = makeDb();
+    db.prepare('INSERT INTO sessions (id, cwd) VALUES (?, ?)').run('s1', 'C:\\DEV\\Fabasoft_WS');
+    db.prepare(
+      `INSERT INTO assistant_usage_events
+        (session_id, model, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, total_nano_aiu, request_multiplier, created_at)
+       VALUES ('s1', 'claude-sonnet-5', 10, 20, 5, 3, 741150000, 1, '2026-09-07T11:52:50.537Z')`
+    ).run();
+    db.close();
+
+    const result = readCopilotEvents(dbPath, { lastId: 0 });
+    expect(result.events).toEqual([
+      {
+        source: 'copilot',
+        sessionId: 's1',
+        timestamp: '2026-09-07T11:52:50.537Z',
+        model: 'claude-sonnet-5',
+        workspace: 'Fabasoft_WS',
+        inputTokens: 10,
+        outputTokens: 20,
+        cacheReadTokens: 5,
+        cacheWriteTokens: 3,
+        nanoAiu: 741150000,
+        premiumRequests: 1,
+      },
+    ]);
+    expect(result.cursor).toEqual({ lastId: 1 });
+  });
+
+  it('only returns rows with id greater than the cursor', () => {
+    const db = makeDb();
+    db.prepare('INSERT INTO sessions (id, cwd) VALUES (?, ?)').run('s1', 'C:\\DEV\\ws1');
+    for (let i = 0; i < 3; i++) {
+      db.prepare(
+        `INSERT INTO assistant_usage_events
+          (session_id, model, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, total_nano_aiu, request_multiplier, created_at)
+         VALUES ('s1', 'claude-sonnet-5', ?, 0, 0, 0, 0, 0, '2026-09-07T00:00:00.000Z')`
+      ).run(i);
+    }
+    db.close();
+
+    const result = readCopilotEvents(dbPath, { lastId: 2 });
+    expect(result.events).toHaveLength(1);
+    expect(result.events[0].inputTokens).toBe(2);
+    expect(result.cursor).toEqual({ lastId: 3 });
+  });
+
+  it('falls back to unknown model and empty workspace when session/model data is missing', () => {
+    const db = makeDb();
+    db.prepare(
+      `INSERT INTO assistant_usage_events
+        (session_id, model, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, total_nano_aiu, request_multiplier, created_at)
+       VALUES ('orphan-session', NULL, 1, 1, 0, 0, 0, 0, '2026-09-07T00:00:00.000Z')`
+    ).run();
+    db.close();
+
+    const result = readCopilotEvents(dbPath, { lastId: 0 });
+    expect(result.events[0].model).toBe('unknown');
+    expect(result.events[0].workspace).toBe('unknown');
+  });
+});

@@ -4,6 +4,7 @@ import * as path from 'path';
 import * as os from 'os';
 import { scanAll } from './logScanner/logRepository';
 import { ScanCache } from './logScanner/scanCache';
+import { CopilotDbCursor } from './logScanner/copilotDb';
 import { computeTotals, groupByModel, groupByWorkspace, computeDailySeries, filterEventsByRange, TimeRange } from './aggregator';
 import { resolveAllowance } from './copilotAllowance';
 import { computeCost, computeCostBreakdown, CostBreakdown } from './pricing';
@@ -12,8 +13,10 @@ import { UsageEvent } from './logScanner/types';
 
 const SCAN_CACHE_KEY = 'aiUsage.scanCache';
 const EVENTS_KEY = 'aiUsage.accumulatedEvents';
+const COPILOT_CURSOR_KEY = 'aiUsage.copilotCursor';
 const outputChannel = vscode.window.createOutputChannel('AI Usage Dashboard');
 let scanCacheMemo: ScanCache = {};
+let copilotCursorMemo: CopilotDbCursor = { lastId: 0 };
 
 // scanAll only returns bytes appended since the last scan (see scanCache.ts),
 // so each call's `events` is a delta, not the full picture — it must be
@@ -37,22 +40,31 @@ async function refreshAndRender(context: vscode.ExtensionContext, range: TimeRan
   lastSource = source;
   const config = vscode.workspace.getConfiguration('aiUsage');
   const claudeRoot = resolveDefaultPath(config.get<string>('claudeLogsPath', ''), '.claude/projects');
-  const copilotRoot = resolveDefaultPath(config.get<string>('copilotLogsPath', ''), '.copilot/session-state');
+  const copilotDbPath = resolveDefaultPath(config.get<string>('copilotLogsPath', ''), '.copilot/session-store.db');
 
   const priorCache = context.globalState.get<ScanCache>(SCAN_CACHE_KEY, scanCacheMemo);
+  const priorCopilotCursor = context.globalState.get<CopilotDbCursor>(COPILOT_CURSOR_KEY, copilotCursorMemo);
   const priorCacheFileCount = Object.keys(priorCache).length;
   const priorAccumulatedCount = accumulatedEvents.length;
-  const { events: newEvents, cache } = scanAll(claudeRoot, copilotRoot, priorCache);
+  const { events: newEvents, cache, copilotCursor, copilotError } = scanAll(
+    claudeRoot,
+    copilotDbPath,
+    priorCache,
+    priorCopilotCursor
+  );
   accumulatedEvents = accumulatedEvents.concat(newEvents);
   const events = source === 'all' ? accumulatedEvents : accumulatedEvents.filter((e) => e.source === source);
   scanCacheMemo = cache;
+  copilotCursorMemo = copilotCursor;
   await context.globalState.update(SCAN_CACHE_KEY, cache);
   await context.globalState.update(EVENTS_KEY, accumulatedEvents);
+  await context.globalState.update(COPILOT_CURSOR_KEY, copilotCursor);
 
   outputChannel.appendLine(
-    `[${new Date().toISOString()}] refresh(range=${range}) claudeRoot=${claudeRoot} copilotRoot=${copilotRoot} ` +
+    `[${new Date().toISOString()}] refresh(range=${range}) claudeRoot=${claudeRoot} copilotDbPath=${copilotDbPath} ` +
       `priorCacheFiles=${priorCacheFileCount} priorAccumulated=${priorAccumulatedCount} newEvents=${newEvents.length} ` +
-      `totalAccumulated=${accumulatedEvents.length} nowCacheFiles=${Object.keys(cache).length}`
+      `totalAccumulated=${accumulatedEvents.length} nowCacheFiles=${Object.keys(cache).length} copilotCursor=${copilotCursor.lastId}` +
+      (copilotError ? ` copilotError=${copilotError}` : '')
   );
 
   const manualAllowance = config.get<number | null>('copilotMonthlyAllowance', null);
@@ -110,6 +122,7 @@ async function refreshAndRender(context: vscode.ExtensionContext, range: TimeRan
 export function activate(context: vscode.ExtensionContext) {
   scanCacheMemo = context.globalState.get<ScanCache>(SCAN_CACHE_KEY, {});
   accumulatedEvents = context.globalState.get<UsageEvent[]>(EVENTS_KEY, []);
+  copilotCursorMemo = context.globalState.get<CopilotDbCursor>(COPILOT_CURSOR_KEY, { lastId: 0 });
 
   context.subscriptions.push(
     vscode.commands.registerCommand('aiUsage.open', async () => {
@@ -124,8 +137,10 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('aiUsage.resetCache', async () => {
       scanCacheMemo = {};
       accumulatedEvents = [];
+      copilotCursorMemo = { lastId: 0 };
       await context.globalState.update(SCAN_CACHE_KEY, {});
       await context.globalState.update(EVENTS_KEY, []);
+      await context.globalState.update(COPILOT_CURSOR_KEY, { lastId: 0 });
       outputChannel.appendLine(`[${new Date().toISOString()}] cache reset — next refresh does a full rescan`);
       await refreshAndRender(context, lastRange, lastSource);
     })
