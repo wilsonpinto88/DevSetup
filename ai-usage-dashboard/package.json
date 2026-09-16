@@ -1,0 +1,23 @@
+{
+  "name": "ai-usage-dashboard",
+  "displayName": "AI Usage Dashboard",
+  "description": "Local usage dashboard for Claude Code and GitHub Copilot",
+  "version": "0.1.0",
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["Other"],
+  "main": "./out/extension.js",
+  "activationEvents": [],
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -w -p ./",
+    "test": "vitest run",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^2.24.0",
+    "typescript": "^5.4.0",
+    "vitest": "^2.0.0"
+  }
+}
