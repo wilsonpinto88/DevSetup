@@ -59,7 +59,7 @@ body {
 
 .range-toggle button.active,
 .source-toggle button.active {
-  background: var(--vscode-button-background);
+  background: #F28500;
   color: var(--vscode-button-foreground);
 }
 
@@ -142,7 +142,7 @@ body {
   align-items: center;
   margin-bottom: 12px;
   padding-bottom: 10px;
-  border-bottom: 2px solid var(--vscode-charts-orange, var(--vscode-focusBorder));
+  border-bottom: 2px solid #F28500;
 }
 
 .model-usage-row .model-name {
@@ -241,7 +241,7 @@ body {
 
 .workspace-bar-fill {
   height: 100%;
-  background: var(--vscode-charts-orange, var(--vscode-focusBorder));
+  background: #F28500;
   border-radius: 3px;
 }
 
