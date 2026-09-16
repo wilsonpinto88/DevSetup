@@ -48,13 +48,27 @@ body {
   gap: 12px;
 }
 
+.range-toggle,
+.source-toggle {
+  display: inline-flex;
+  border: 1px solid var(--vscode-widget-border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
 .range-toggle button,
 .source-toggle button {
   background: var(--vscode-button-secondaryBackground);
   color: var(--vscode-button-secondaryForeground);
   border: none;
-  padding: 4px 10px;
+  border-left: 1px solid var(--vscode-widget-border);
+  padding: 4px 14px;
   cursor: pointer;
+}
+
+.range-toggle button:first-child,
+.source-toggle button:first-child {
+  border-left: none;
 }
 
 .range-toggle button.active,
