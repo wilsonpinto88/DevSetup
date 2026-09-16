@@ -28,25 +28,37 @@
     return gradient;
   }
 
-  function renderStatTiles(totals, totalCostUsd, allowance) {
+  function renderStatTiles(totals, totalCostUsd, allowance, source) {
     const el = document.getElementById('statTiles');
     const cacheTotal = totals.totalCacheReadTokens + totals.totalCacheWriteTokens;
     const hitRate = cacheTotal > 0 ? Math.round((totals.totalCacheReadTokens / cacheTotal) * 100) : 0;
+    const isCopilotOnly = source === 'copilot';
     const tiles = [
       { label: 'Cost', value: fmtUsd(totalCostUsd) },
       { label: 'Messages', value: fmt(totals.eventCount) },
       { label: 'Input Tokens', value: fmt(totals.totalInputTokens) },
-      { label: 'Output Tokens', value: fmt(totals.totalOutputTokens) },
+    ];
+    // Copilot's usage_checkpoint log records never include an output-token
+    // count, so that tile would always read 0 and mislead rather than inform.
+    if (!isCopilotOnly) {
+      tiles.push({ label: 'Output Tokens', value: fmt(totals.totalOutputTokens) });
+    }
+    tiles.push(
       { label: 'Input Cache (Miss)', value: fmt(totals.totalCacheWriteTokens) },
       { label: 'Input Cache (Hit)', value: fmt(totals.totalCacheReadTokens) },
       { label: 'Cache Hit Rate', value: `${hitRate}%` },
-      { label: 'Sessions', value: fmt(totals.sessionCount) },
-    ];
-    if (totals.totalNanoAiu > 0) {
+      { label: 'Sessions', value: fmt(totals.sessionCount) }
+    );
+    if (isCopilotOnly) {
       tiles.push({ label: 'Copilot AI Units', value: fmt(totals.totalNanoAiu / 1e9) });
-    }
-    if (totals.totalPremiumRequests > 0) {
       tiles.push({ label: 'Copilot Premium Reqs', value: fmt(totals.totalPremiumRequests) });
+    } else if (totals.totalNanoAiu > 0 || totals.totalPremiumRequests > 0) {
+      if (totals.totalNanoAiu > 0) {
+        tiles.push({ label: 'Copilot AI Units', value: fmt(totals.totalNanoAiu / 1e9) });
+      }
+      if (totals.totalPremiumRequests > 0) {
+        tiles.push({ label: 'Copilot Premium Reqs', value: fmt(totals.totalPremiumRequests) });
+      }
     }
     if (allowance) {
       const pct = allowance.total > 0 ? Math.round((allowance.used / allowance.total) * 100) : 0;
@@ -57,7 +69,7 @@
       .join('');
   }
 
-  function renderCostComposition(costBreakdown) {
+  function renderCostComposition(costBreakdown, source) {
     const barEl = document.getElementById('costBar');
     const legendEl = document.getElementById('costLegend');
     if (!costBreakdown) {
@@ -67,7 +79,9 @@
     }
     const segments = [
       { label: 'Input Tokens', value: costBreakdown.inputUsd, color: '#58a6ff' },
-      { label: 'Output Tokens', value: costBreakdown.outputUsd, color: '#e3b341' },
+      // Copilot logs never report output tokens, so this segment is always
+      // zero there — leaving it out avoids a permanently-empty legend entry.
+      ...(source === 'copilot' ? [] : [{ label: 'Output Tokens', value: costBreakdown.outputUsd, color: '#e3b341' }]),
       { label: 'Input Cache (Miss)', value: costBreakdown.cacheWriteUsd, color: '#a371f7' },
       { label: 'Input Cache (Hit)', value: costBreakdown.cacheReadUsd, color: '#3fb950' },
     ];
@@ -86,7 +100,7 @@
       .join('');
   }
 
-  function renderModelUsageList(byModel) {
+  function renderModelUsageList(byModel, source) {
     const el = document.getElementById('modelUsageList');
     if (byModel.length === 0) {
       el.innerHTML = '<p>No usage in the current selection.</p>';
@@ -103,7 +117,8 @@
         const stats = [
           { label: 'Messages', value: fmt(m.eventCount) },
           { label: 'Input Tokens', value: fmt(m.inputTokens) },
-          { label: 'Output Tokens', value: fmt(m.outputTokens) },
+          // Copilot logs never report output tokens — omit the misleading always-0 stat.
+          ...(source === 'copilot' ? [] : [{ label: 'Output Tokens', value: fmt(m.outputTokens) }]),
           { label: 'Input Cache (Miss)', value: fmt(m.cacheWriteTokens) },
           { label: 'Input Cache (Hit)', value: fmt(m.cacheReadTokens) },
           { label: 'Cache Hit Rate', value: `${hitRate}%` },
@@ -125,7 +140,7 @@
       .join('');
   }
 
-  function renderDailyChart(dailySeries) {
+  function renderDailyChart(dailySeries, source) {
     const canvas = document.getElementById('dailyChart');
     const ctx = canvas.getContext('2d');
     const labels = dailySeries.map((p) => shortDateLabel(p.bucket));
@@ -133,6 +148,8 @@
     const outputData = dailySeries.map((p) => p.outputTokens);
     const inputGradient = makeGradient(ctx, canvas, '88, 166, 255');
     const outputGradient = makeGradient(ctx, canvas, '163, 113, 247');
+    // Copilot logs never report output tokens, so that line would just sit at 0.
+    const hideOutput = source === 'copilot';
 
     if (dailyChart) {
       dailyChart.data.labels = labels;
@@ -140,6 +157,7 @@
       dailyChart.data.datasets[0].backgroundColor = inputGradient;
       dailyChart.data.datasets[1].data = outputData;
       dailyChart.data.datasets[1].backgroundColor = outputGradient;
+      dailyChart.data.datasets[1].hidden = hideOutput;
       dailyChart.update();
       return;
     }
@@ -164,6 +182,7 @@
             fill: true,
             backgroundColor: outputGradient,
             borderColor: 'rgba(163, 113, 247, 1)',
+            hidden: hideOutput,
           },
         ],
       },
@@ -208,10 +227,10 @@
   }
 
   function render(data) {
-    renderStatTiles(data.totals, data.totalCostUsd, data.allowance);
-    renderCostComposition(data.costBreakdown);
-    renderDailyChart(data.dailySeries);
-    renderModelUsageList(data.byModel);
+    renderStatTiles(data.totals, data.totalCostUsd, data.allowance, data.source);
+    renderCostComposition(data.costBreakdown, data.source);
+    renderDailyChart(data.dailySeries, data.source);
+    renderModelUsageList(data.byModel, data.source);
     renderWorkspaceList(data.byWorkspace);
   }
 
