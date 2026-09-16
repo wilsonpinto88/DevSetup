@@ -8,6 +8,7 @@ export interface Totals {
   totalNanoAiu: number;
   totalPremiumRequests: number;
   sessionCount: number;
+  eventCount: number;
 }
 
 export function computeTotals(events: UsageEvent[]): Totals {
@@ -20,6 +21,7 @@ export function computeTotals(events: UsageEvent[]): Totals {
     totalNanoAiu: 0,
     totalPremiumRequests: 0,
     sessionCount: 0,
+    eventCount: 0,
   };
   for (const e of events) {
     sessionIds.add(`${e.source}:${e.sessionId}`);
@@ -29,6 +31,7 @@ export function computeTotals(events: UsageEvent[]): Totals {
     totals.totalCacheWriteTokens += e.cacheWriteTokens;
     totals.totalNanoAiu += e.nanoAiu ?? 0;
     totals.totalPremiumRequests += e.premiumRequests ?? 0;
+    totals.eventCount += 1;
   }
   totals.sessionCount = sessionIds.size;
   return totals;
@@ -38,17 +41,25 @@ export interface GroupedTotal {
   key: string;
   inputTokens: number;
   outputTokens: number;
+  cacheReadTokens: number;
+  cacheWriteTokens: number;
   nanoAiu: number;
+  eventCount: number;
 }
 
 function groupBy(events: UsageEvent[], keyFn: (e: UsageEvent) => string): GroupedTotal[] {
   const map = new Map<string, GroupedTotal>();
   for (const e of events) {
     const key = keyFn(e);
-    const existing = map.get(key) ?? { key, inputTokens: 0, outputTokens: 0, nanoAiu: 0 };
+    const existing =
+      map.get(key) ??
+      ({ key, inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0, nanoAiu: 0, eventCount: 0 } as GroupedTotal);
     existing.inputTokens += e.inputTokens;
     existing.outputTokens += e.outputTokens;
+    existing.cacheReadTokens += e.cacheReadTokens;
+    existing.cacheWriteTokens += e.cacheWriteTokens;
     existing.nanoAiu += e.nanoAiu ?? 0;
+    existing.eventCount += 1;
     map.set(key, existing);
   }
   return Array.from(map.values()).sort(

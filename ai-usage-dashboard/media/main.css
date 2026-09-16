@@ -83,6 +83,85 @@ body {
   font-weight: 600;
 }
 
+.panel {
+  background: var(--vscode-sideBar-background);
+  border: 1px solid var(--vscode-widget-border);
+  border-radius: 6px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.panel h2 {
+  margin-top: 0;
+}
+
+.cost-bar {
+  display: flex;
+  height: 10px;
+  border-radius: 5px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.cost-bar .segment {
+  height: 100%;
+}
+
+.cost-legend {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-size: 0.9em;
+}
+
+.cost-legend .swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.model-usage-row {
+  border-bottom: 1px solid var(--vscode-widget-border);
+  padding: 10px 0;
+}
+
+.model-usage-row:last-child {
+  border-bottom: none;
+}
+
+.model-usage-row .model-header {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.model-usage-row .model-cost {
+  color: var(--vscode-charts-green, #3fb950);
+}
+
+.model-usage-row .model-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 4px 16px;
+  font-size: 0.9em;
+  color: var(--vscode-descriptionForeground);
+}
+
+.model-usage-row .model-stats span.value {
+  color: var(--vscode-foreground);
+  float: right;
+}
+
+.model-usage-row .pricing-note {
+  margin-top: 6px;
+  font-size: 0.8em;
+  color: var(--vscode-descriptionForeground);
+}
+
 .chart-row {
   display: flex;
   gap: 16px;

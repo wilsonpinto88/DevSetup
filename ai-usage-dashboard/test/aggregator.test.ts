@@ -30,6 +30,7 @@ describe('computeTotals', () => {
     expect(totals.totalNanoAiu).toBe(100);
     expect(totals.totalPremiumRequests).toBe(1);
     expect(totals.sessionCount).toBe(2);
+    expect(totals.eventCount).toBe(3);
   });
 });
 
@@ -37,12 +38,17 @@ describe('groupByModel / groupByWorkspace', () => {
   it('groups and sums by model, sorted descending by total tokens', () => {
     const events = [
       event({ model: 'claude-haiku-4.5', inputTokens: 1, outputTokens: 1 }),
-      event({ model: 'claude-sonnet-5', inputTokens: 50, outputTokens: 50 }),
+      event({ model: 'claude-sonnet-5', inputTokens: 50, outputTokens: 50, cacheReadTokens: 20, cacheWriteTokens: 10 }),
+      event({ model: 'claude-sonnet-5', inputTokens: 5, outputTokens: 5 }),
     ];
     const grouped = groupByModel(events);
     expect(grouped[0].key).toBe('claude-sonnet-5');
-    expect(grouped[0].inputTokens).toBe(50);
+    expect(grouped[0].inputTokens).toBe(55);
+    expect(grouped[0].cacheReadTokens).toBe(20);
+    expect(grouped[0].cacheWriteTokens).toBe(10);
+    expect(grouped[0].eventCount).toBe(2);
     expect(grouped[1].key).toBe('claude-haiku-4.5');
+    expect(grouped[1].eventCount).toBe(1);
   });
 
   it('groups by workspace', () => {

@@ -4,10 +4,13 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { Totals, GroupedTotal, DailyPoint, TimeRange } from './aggregator';
 import { AllowanceResult } from './copilotAllowance';
+import { CostBreakdown } from './pricing';
 
 export interface DashboardData {
   totals: Totals;
-  byModel: GroupedTotal[];
+  totalCostUsd: number | undefined; // undefined only when zero events have known pricing
+  costBreakdown: CostBreakdown | undefined; // aggregated across all models with known pricing
+  byModel: ModelUsageEntry[];
   byWorkspace: GroupedTotal[];
   dailySeries: DailyPoint[];
   range: TimeRange;
@@ -18,6 +21,10 @@ export interface DashboardData {
 let currentPanel: vscode.WebviewPanel | undefined;
 
 export type SourceFilter = 'all' | 'claude-code' | 'copilot';
+
+export interface ModelUsageEntry extends GroupedTotal {
+  costUsd: number | undefined; // undefined when the model has no confirmed pricing rate
+}
 
 export function createOrShowPanel(
   context: vscode.ExtensionContext,

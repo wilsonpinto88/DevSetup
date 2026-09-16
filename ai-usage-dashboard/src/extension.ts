@@ -6,7 +6,8 @@ import { scanAll } from './logScanner/logRepository';
 import { ScanCache } from './logScanner/scanCache';
 import { computeTotals, groupByModel, groupByWorkspace, computeDailySeries, TimeRange } from './aggregator';
 import { resolveAllowance } from './copilotAllowance';
-import { createOrShowPanel, postDashboardData, SourceFilter } from './webviewPanel';
+import { computeCost, computeCostBreakdown, CostBreakdown } from './pricing';
+import { createOrShowPanel, postDashboardData, SourceFilter, ModelUsageEntry } from './webviewPanel';
 import { UsageEvent } from './logScanner/types';
 
 const SCAN_CACHE_KEY = 'aiUsage.scanCache';
@@ -68,9 +69,35 @@ async function refreshAndRender(context: vscode.ExtensionContext, range: TimeRan
     manualAllowance: manualAllowance ?? undefined,
   });
 
+  const byModelRaw = groupByModel(events);
+  const byModel: ModelUsageEntry[] = byModelRaw.map((g) => ({
+    ...g,
+    costUsd: computeCost(g.inputTokens, g.outputTokens, g.cacheWriteTokens, g.cacheReadTokens, g.key),
+  }));
+  const knownCosts = byModel.map((m) => m.costUsd).filter((c): c is number => c !== undefined);
+  const totalCostUsd = knownCosts.length > 0 ? knownCosts.reduce((sum, c) => sum + c, 0) : undefined;
+
+  const breakdowns = byModelRaw
+    .map((g) => computeCostBreakdown(g.inputTokens, g.outputTokens, g.cacheWriteTokens, g.cacheReadTokens, g.key))
+    .filter((b): b is CostBreakdown => b !== undefined);
+  const costBreakdown: CostBreakdown | undefined =
+    breakdowns.length > 0
+      ? breakdowns.reduce(
+          (acc, b) => ({
+            inputUsd: acc.inputUsd + b.inputUsd,
+            outputUsd: acc.outputUsd + b.outputUsd,
+            cacheWriteUsd: acc.cacheWriteUsd + b.cacheWriteUsd,
+            cacheReadUsd: acc.cacheReadUsd + b.cacheReadUsd,
+          }),
+          { inputUsd: 0, outputUsd: 0, cacheWriteUsd: 0, cacheReadUsd: 0 }
+        )
+      : undefined;
+
   postDashboardData(context, {
     totals: computeTotals(events),
-    byModel: groupByModel(events),
+    totalCostUsd,
+    costBreakdown,
+    byModel,
     byWorkspace: groupByWorkspace(events),
     dailySeries: computeDailySeries(events, range),
     range,

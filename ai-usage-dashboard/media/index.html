@@ -30,17 +30,22 @@
       </div>
     </header>
     <section class="stat-tiles" id="statTiles"></section>
+    <section class="panel" id="costCompositionSection">
+      <h2>Cost Composition</h2>
+      <div class="cost-bar" id="costBar"></div>
+      <div class="cost-legend" id="costLegend"></div>
+    </section>
     <section class="chart-row">
       <div class="chart-card">
         <h2>Daily Usage</h2>
         <canvas id="dailyChart"></canvas>
       </div>
     </section>
+    <section class="panel" id="modelUsageSection">
+      <h2>Model Usage</h2>
+      <div id="modelUsageList"></div>
+    </section>
     <section class="chart-row">
-      <div class="chart-card">
-        <h2>Cost by Model</h2>
-        <canvas id="modelChart"></canvas>
-      </div>
       <div class="chart-card">
         <h2>Cost by Workspace</h2>
         <canvas id="workspaceChart"></canvas>

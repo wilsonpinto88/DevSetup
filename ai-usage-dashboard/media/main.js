@@ -2,7 +2,6 @@
 (function () {
   const vscode = acquireVsCodeApi();
   let dailyChart;
-  let modelChart;
   let workspaceChart;
   let currentRange = 'month';
   let currentSource = 'all';
@@ -11,6 +10,10 @@
 
   function fmt(n) {
     return new Intl.NumberFormat().format(Math.round(n));
+  }
+
+  function fmtUsd(n) {
+    return n === undefined || n === null ? '—' : `$${n.toFixed(2)}`;
   }
 
   function shortDateLabel(bucket) {
@@ -26,11 +29,18 @@
     return gradient;
   }
 
-  function renderStatTiles(totals, allowance) {
+  function renderStatTiles(totals, totalCostUsd, allowance) {
     const el = document.getElementById('statTiles');
+    const cacheTotal = totals.totalCacheReadTokens + totals.totalCacheWriteTokens;
+    const hitRate = cacheTotal > 0 ? Math.round((totals.totalCacheReadTokens / cacheTotal) * 100) : 0;
     const tiles = [
+      { label: 'Cost', value: fmtUsd(totalCostUsd) },
+      { label: 'Messages', value: fmt(totals.eventCount) },
       { label: 'Input Tokens', value: fmt(totals.totalInputTokens) },
       { label: 'Output Tokens', value: fmt(totals.totalOutputTokens) },
+      { label: 'Input Cache (Miss)', value: fmt(totals.totalCacheWriteTokens) },
+      { label: 'Input Cache (Hit)', value: fmt(totals.totalCacheReadTokens) },
+      { label: 'Cache Hit Rate', value: `${hitRate}%` },
       { label: 'Sessions', value: fmt(totals.sessionCount) },
     ];
     if (totals.totalNanoAiu > 0) {
@@ -45,6 +55,69 @@
     }
     el.innerHTML = tiles
       .map((t) => `<div class="stat-tile"><div class="label">${t.label}</div><div class="value">${t.value}</div></div>`)
+      .join('');
+  }
+
+  function renderCostComposition(costBreakdown) {
+    const barEl = document.getElementById('costBar');
+    const legendEl = document.getElementById('costLegend');
+    if (!costBreakdown) {
+      barEl.innerHTML = '';
+      legendEl.innerHTML = '<span>No priced models in the current selection.</span>';
+      return;
+    }
+    const segments = [
+      { label: 'Input Tokens', value: costBreakdown.inputUsd, color: '#58a6ff' },
+      { label: 'Output Tokens', value: costBreakdown.outputUsd, color: '#e3b341' },
+      { label: 'Input Cache (Miss)', value: costBreakdown.cacheWriteUsd, color: '#a371f7' },
+      { label: 'Input Cache (Hit)', value: costBreakdown.cacheReadUsd, color: '#3fb950' },
+    ];
+    const total = segments.reduce((sum, s) => sum + s.value, 0);
+    barEl.innerHTML = segments
+      .map((s) => {
+        const pct = total > 0 ? (s.value / total) * 100 : 0;
+        return `<div class="segment" style="width:${pct}%;background:${s.color}"></div>`;
+      })
+      .join('');
+    legendEl.innerHTML = segments
+      .map((s) => {
+        const pct = total > 0 ? Math.round((s.value / total) * 100) : 0;
+        return `<span><span class="swatch" style="background:${s.color}"></span>${s.label} ${fmtUsd(s.value)} (${pct}%)</span>`;
+      })
+      .join('');
+  }
+
+  function renderModelUsageList(byModel) {
+    const el = document.getElementById('modelUsageList');
+    if (byModel.length === 0) {
+      el.innerHTML = '<p>No usage in the current selection.</p>';
+      return;
+    }
+    el.innerHTML = byModel
+      .map((m) => {
+        const cacheTotal = m.cacheReadTokens + m.cacheWriteTokens;
+        const hitRate = cacheTotal > 0 ? Math.round((m.cacheReadTokens / cacheTotal) * 100) : 0;
+        const pricingNote =
+          m.costUsd === undefined
+            ? '<div class="pricing-note">No confirmed pricing rate for this model — cost omitted from totals.</div>'
+            : '';
+        return `
+          <div class="model-usage-row">
+            <div class="model-header">
+              <span>${m.key}</span>
+              <span class="model-cost">${fmtUsd(m.costUsd)}</span>
+            </div>
+            <div class="model-stats">
+              <div>Input Tokens <span class="value">${fmt(m.inputTokens)}</span></div>
+              <div>Output Tokens <span class="value">${fmt(m.outputTokens)}</span></div>
+              <div>Input Cache (Miss) <span class="value">${fmt(m.cacheWriteTokens)}</span></div>
+              <div>Input Cache (Hit) <span class="value">${fmt(m.cacheReadTokens)}</span></div>
+              <div>Cache Hit Rate <span class="value">${hitRate}%</span></div>
+              <div>Messages <span class="value">${fmt(m.eventCount)}</span></div>
+            </div>
+            ${pricingNote}
+          </div>`;
+      })
       .join('');
   }
 
@@ -98,23 +171,6 @@
     });
   }
 
-  function renderModelChart(byModel) {
-    const ctx = document.getElementById('modelChart').getContext('2d');
-    const labels = byModel.map((g) => g.key);
-    const data = byModel.map((g) => g.inputTokens + g.outputTokens);
-    if (modelChart) {
-      modelChart.data.labels = labels;
-      modelChart.data.datasets[0].data = data;
-      modelChart.update();
-      return;
-    }
-    modelChart = new Chart(ctx, {
-      type: 'doughnut',
-      data: { labels, datasets: [{ data }] },
-      options: { animation: FLUID_ANIMATION, plugins: { legend: { position: 'bottom' } } },
-    });
-  }
-
   function renderWorkspaceChart(byWorkspace) {
     const ctx = document.getElementById('workspaceChart').getContext('2d');
     const labels = byWorkspace.map((g) => g.key);
@@ -137,9 +193,10 @@
   }
 
   function render(data) {
-    renderStatTiles(data.totals, data.allowance);
+    renderStatTiles(data.totals, data.totalCostUsd, data.allowance);
+    renderCostComposition(data.costBreakdown);
     renderDailyChart(data.dailySeries);
-    renderModelChart(data.byModel);
+    renderModelUsageList(data.byModel);
     renderWorkspaceChart(data.byWorkspace);
   }
 
