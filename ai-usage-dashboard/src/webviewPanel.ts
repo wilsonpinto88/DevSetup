@@ -44,10 +44,10 @@ export function createOrShowPanel(
 
   let html = fs.readFileSync(htmlTemplatePath, 'utf8');
   html = html
-    .replace('{{cspSource}}', panel.webview.cspSource)
-    .replace('{{cssUri}}', cssUri.toString())
-    .replace('{{chartUri}}', chartUri.toString())
-    .replace('{{scriptUri}}', scriptUri.toString());
+    .replace(/\{\{cspSource\}\}/g, panel.webview.cspSource)
+    .replace(/\{\{cssUri\}\}/g, cssUri.toString())
+    .replace(/\{\{chartUri\}\}/g, chartUri.toString())
+    .replace(/\{\{scriptUri\}\}/g, scriptUri.toString());
   panel.webview.html = html;
 
   panel.webview.onDidReceiveMessage((message) => {
