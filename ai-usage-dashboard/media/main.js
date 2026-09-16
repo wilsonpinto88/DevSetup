@@ -169,6 +169,7 @@
       },
       options: {
         animation: FLUID_ANIMATION,
+        maintainAspectRatio: false,
         interaction: { mode: 'index', intersect: false },
         plugins: { legend: { position: 'bottom' } },
       },

@@ -217,6 +217,12 @@ body {
   min-width: 320px;
 }
 
+.chart-container {
+  position: relative;
+  height: 220px;
+  max-height: 220px;
+}
+
 .workspace-list {
   display: flex;
   flex-direction: column;
