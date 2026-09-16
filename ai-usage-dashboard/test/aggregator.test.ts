@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { UsageEvent } from '../src/logScanner/types';
-import { computeTotals, groupByModel, groupByWorkspace, computeDailySeries } from '../src/aggregator';
+import { computeTotals, groupByModel, groupByWorkspace, computeDailySeries, filterEventsByRange } from '../src/aggregator';
 
 function event(overrides: Partial<UsageEvent>): UsageEvent {
   return {
@@ -55,6 +55,26 @@ describe('groupByModel / groupByWorkspace', () => {
     const events = [event({ workspace: 'WS_PSM' }), event({ workspace: 'Fabasoft_WS' })];
     const grouped = groupByWorkspace(events);
     expect(grouped.map((g) => g.key).sort()).toEqual(['Fabasoft_WS', 'WS_PSM']);
+  });
+});
+
+describe('filterEventsByRange', () => {
+  const now = new Date('2026-09-16T12:00:00.000Z');
+
+  it('keeps only events within the week window', () => {
+    const events = [
+      event({ sessionId: 'a', timestamp: '2026-09-15T00:00:00.000Z' }),
+      event({ sessionId: 'b', timestamp: '2026-08-01T00:00:00.000Z' }), // outside 7-day window
+    ];
+    const filtered = filterEventsByRange(events, 'week', now);
+    expect(filtered.map((e) => e.sessionId)).toEqual(['a']);
+  });
+
+  it('widens to include more events for month and 6months ranges', () => {
+    const events = [event({ timestamp: '2026-08-01T00:00:00.000Z' })];
+    expect(filterEventsByRange(events, 'week', now)).toHaveLength(0);
+    expect(filterEventsByRange(events, 'month', now)).toHaveLength(0);
+    expect(filterEventsByRange(events, '6months', now)).toHaveLength(1);
   });
 });
 

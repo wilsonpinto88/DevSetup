@@ -96,21 +96,29 @@ function weekStartISO(d: Date): string {
   return dayISO(copy);
 }
 
+export function filterEventsByRange(
+  events: UsageEvent[],
+  range: TimeRange,
+  now: Date = new Date()
+): UsageEvent[] {
+  const rangeDays = range === 'week' ? 7 : range === 'month' ? 30 : 180;
+  const cutoff = new Date(now.getTime() - rangeDays * 24 * 60 * 60 * 1000);
+  return events.filter((e) => {
+    const ts = new Date(e.timestamp);
+    return ts >= cutoff && ts <= now;
+  });
+}
+
 export function computeDailySeries(
   events: UsageEvent[],
   range: TimeRange,
   now: Date = new Date()
 ): DailyPoint[] {
-  const rangeDays = range === 'week' ? 7 : range === 'month' ? 30 : 180;
-  const cutoff = new Date(now.getTime() - rangeDays * 24 * 60 * 60 * 1000);
   const bucketByWeek = range === '6months';
   const bucketed = new Map<string, { inputTokens: number; outputTokens: number; sessionIds: Set<string> }>();
 
-  for (const e of events) {
+  for (const e of filterEventsByRange(events, range, now)) {
     const ts = new Date(e.timestamp);
-    if (ts < cutoff || ts > now) {
-      continue;
-    }
     const bucketKey = bucketByWeek ? weekStartISO(ts) : dayISO(ts);
     const entry = bucketed.get(bucketKey) ?? { inputTokens: 0, outputTokens: 0, sessionIds: new Set<string>() };
     entry.inputTokens += e.inputTokens;

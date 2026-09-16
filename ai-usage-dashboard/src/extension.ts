@@ -4,7 +4,7 @@ import * as path from 'path';
 import * as os from 'os';
 import { scanAll } from './logScanner/logRepository';
 import { ScanCache } from './logScanner/scanCache';
-import { computeTotals, groupByModel, groupByWorkspace, computeDailySeries, TimeRange } from './aggregator';
+import { computeTotals, groupByModel, groupByWorkspace, computeDailySeries, filterEventsByRange, TimeRange } from './aggregator';
 import { resolveAllowance } from './copilotAllowance';
 import { computeCost, computeCostBreakdown, CostBreakdown } from './pricing';
 import { createOrShowPanel, postDashboardData, SourceFilter, ModelUsageEntry } from './webviewPanel';
@@ -69,7 +69,8 @@ async function refreshAndRender(context: vscode.ExtensionContext, range: TimeRan
     manualAllowance: manualAllowance ?? undefined,
   });
 
-  const byModelRaw = groupByModel(events);
+  const rangeEvents = filterEventsByRange(events, range);
+  const byModelRaw = groupByModel(rangeEvents);
   const byModel: ModelUsageEntry[] = byModelRaw.map((g) => ({
     ...g,
     costUsd: computeCost(g.inputTokens, g.outputTokens, g.cacheWriteTokens, g.cacheReadTokens, g.key),
@@ -94,11 +95,11 @@ async function refreshAndRender(context: vscode.ExtensionContext, range: TimeRan
       : undefined;
 
   postDashboardData(context, {
-    totals: computeTotals(events),
+    totals: computeTotals(rangeEvents),
     totalCostUsd,
     costBreakdown,
     byModel,
-    byWorkspace: groupByWorkspace(events),
+    byWorkspace: groupByWorkspace(rangeEvents),
     dailySeries: computeDailySeries(events, range),
     range,
     source,
