@@ -2,7 +2,6 @@
 (function () {
   const vscode = acquireVsCodeApi();
   let dailyChart;
-  let workspaceChart;
   let currentRange = 'month';
   let currentSource = 'all';
 
@@ -176,25 +175,35 @@
     });
   }
 
-  function renderWorkspaceChart(byWorkspace) {
-    const ctx = document.getElementById('workspaceChart').getContext('2d');
-    const labels = byWorkspace.map((g) => g.key);
-    const data = byWorkspace.map((g) => g.inputTokens + g.outputTokens);
-    if (workspaceChart) {
-      workspaceChart.data.labels = labels;
-      workspaceChart.data.datasets[0].data = data;
-      workspaceChart.update();
+  function renderWorkspaceList(byWorkspace) {
+    const el = document.getElementById('workspaceList');
+    if (byWorkspace.length === 0) {
+      el.innerHTML = '<p>No usage in the current selection.</p>';
       return;
     }
-    workspaceChart = new Chart(ctx, {
-      type: 'bar',
-      data: { labels, datasets: [{ label: 'Tokens', data }] },
-      options: {
-        animation: FLUID_ANIMATION,
-        indexAxis: 'y',
-        plugins: { legend: { display: false } },
-      },
-    });
+    const sorted = [...byWorkspace].sort(
+      (a, b) => b.inputTokens + b.outputTokens - (a.inputTokens + a.outputTokens)
+    );
+    const maxTokens = Math.max(...sorted.map((g) => g.inputTokens + g.outputTokens), 1);
+    el.innerHTML = sorted
+      .map((g) => {
+        const total = g.inputTokens + g.outputTokens;
+        const pct = Math.round((total / maxTokens) * 100);
+        return `
+          <div class="workspace-row">
+            <div class="workspace-header">
+              <span class="workspace-name">${g.key}</span>
+              <span class="workspace-total">${fmt(total)} tokens</span>
+            </div>
+            <div class="workspace-bar-track"><div class="workspace-bar-fill" style="width:${pct}%"></div></div>
+            <div class="workspace-stats">
+              <span>Input ${fmt(g.inputTokens)}</span>
+              <span>Output ${fmt(g.outputTokens)}</span>
+              <span>Messages ${fmt(g.eventCount)}</span>
+            </div>
+          </div>`;
+      })
+      .join('');
   }
 
   function render(data) {
@@ -202,7 +211,7 @@
     renderCostComposition(data.costBreakdown);
     renderDailyChart(data.dailySeries);
     renderModelUsageList(data.byModel);
-    renderWorkspaceChart(data.byWorkspace);
+    renderWorkspaceList(data.byWorkspace);
   }
 
   document.getElementById('rangeToggle').addEventListener('click', (e) => {

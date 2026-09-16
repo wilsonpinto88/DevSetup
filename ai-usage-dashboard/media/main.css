@@ -141,6 +141,8 @@ body {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--vscode-charts-orange, var(--vscode-focusBorder));
 }
 
 .model-usage-row .model-name {
@@ -199,4 +201,54 @@ body {
   padding: 12px;
   flex: 1;
   min-width: 320px;
+}
+
+.workspace-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.workspace-row {
+  background: var(--vscode-editor-background);
+  border: 1px solid var(--vscode-widget-border);
+  border-radius: 6px;
+  padding: 10px 14px;
+}
+
+.workspace-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.workspace-name {
+  font-weight: 600;
+}
+
+.workspace-total {
+  font-size: 0.85em;
+  color: var(--vscode-descriptionForeground);
+}
+
+.workspace-bar-track {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--vscode-widget-border);
+  overflow: hidden;
+}
+
+.workspace-bar-fill {
+  height: 100%;
+  background: var(--vscode-charts-blue, #58a6ff);
+  border-radius: 3px;
+}
+
+.workspace-stats {
+  display: flex;
+  gap: 16px;
+  margin-top: 6px;
+  font-size: 0.85em;
+  color: var(--vscode-descriptionForeground);
 }
