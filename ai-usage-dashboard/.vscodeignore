@@ -1,0 +1,6 @@
+src/**
+test/**
+.gitignore
+tsconfig.json
+vitest.config.ts
+**/*.map

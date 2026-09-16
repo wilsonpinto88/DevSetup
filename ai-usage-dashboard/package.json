@@ -3,6 +3,7 @@
   "displayName": "AI Usage Dashboard",
   "description": "Local usage dashboard for Claude Code and GitHub Copilot",
   "version": "0.1.0",
+  "publisher": "wilsonpinto88",
   "engines": { "vscode": "^1.85.0" },
   "categories": ["Other"],
   "main": "./out/extension.js",
