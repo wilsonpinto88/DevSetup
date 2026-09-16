@@ -27,6 +27,12 @@
       { label: 'Output Tokens', value: fmt(totals.totalOutputTokens) },
       { label: 'Sessions', value: fmt(totals.sessionCount) },
     ];
+    if (totals.totalNanoAiu > 0) {
+      tiles.push({ label: 'Copilot AI Units', value: fmt(totals.totalNanoAiu / 1e9) });
+    }
+    if (totals.totalPremiumRequests > 0) {
+      tiles.push({ label: 'Copilot Premium Reqs', value: fmt(totals.totalPremiumRequests) });
+    }
     if (allowance) {
       const pct = allowance.total > 0 ? Math.round((allowance.used / allowance.total) * 100) : 0;
       tiles.push({ label: `Copilot Allowance (${allowance.source})`, value: `${pct}%` });
