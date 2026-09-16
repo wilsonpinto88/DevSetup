@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="default-src 'none'; style-src {{cspSource}}; script-src {{cspSource}};"
+  />
+  <link rel="stylesheet" href="{{cssUri}}" />
+  <title>AI Usage Dashboard</title>
+</head>
+<body>
+  <div id="app">
+    <header class="toolbar">
+      <h1>AI Usage Dashboard</h1>
+      <div class="range-toggle" id="rangeToggle">
+        <button data-range="week">Week</button>
+        <button data-range="month" class="active">Month</button>
+        <button data-range="6months">6 Months</button>
+      </div>
+    </header>
+    <section class="stat-tiles" id="statTiles"></section>
+    <section class="chart-row">
+      <div class="chart-card">
+        <h2>Daily Usage</h2>
+        <canvas id="dailyChart"></canvas>
+      </div>
+    </section>
+    <section class="chart-row">
+      <div class="chart-card">
+        <h2>Cost by Model</h2>
+        <canvas id="modelChart"></canvas>
+      </div>
+      <div class="chart-card">
+        <h2>Cost by Workspace</h2>
+        <canvas id="workspaceChart"></canvas>
+      </div>
+    </section>
+  </div>
+  <script src="{{chartUri}}"></script>
+  <script src="{{scriptUri}}"></script>
+</body>
+</html>
