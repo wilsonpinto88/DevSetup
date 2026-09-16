@@ -12,6 +12,14 @@
     return new Intl.NumberFormat().format(Math.round(n));
   }
 
+  function makeGradient(ctx, canvas, colorRgb) {
+    const height = canvas.height || 300;
+    const gradient = ctx.createLinearGradient(0, 0, 0, height);
+    gradient.addColorStop(0, `rgba(${colorRgb}, 0.35)`);
+    gradient.addColorStop(1, `rgba(${colorRgb}, 0.02)`);
+    return gradient;
+  }
+
   function renderStatTiles(totals, allowance) {
     const el = document.getElementById('statTiles');
     const tiles = [
@@ -29,15 +37,20 @@
   }
 
   function renderDailyChart(dailySeries) {
-    const ctx = document.getElementById('dailyChart').getContext('2d');
+    const canvas = document.getElementById('dailyChart');
+    const ctx = canvas.getContext('2d');
     const labels = dailySeries.map((p) => p.bucket);
     const inputData = dailySeries.map((p) => p.inputTokens);
     const outputData = dailySeries.map((p) => p.outputTokens);
+    const inputGradient = makeGradient(ctx, canvas, '88, 166, 255');
+    const outputGradient = makeGradient(ctx, canvas, '163, 113, 247');
 
     if (dailyChart) {
       dailyChart.data.labels = labels;
       dailyChart.data.datasets[0].data = inputData;
+      dailyChart.data.datasets[0].backgroundColor = inputGradient;
       dailyChart.data.datasets[1].data = outputData;
+      dailyChart.data.datasets[1].backgroundColor = outputGradient;
       dailyChart.update();
       return;
     }
@@ -52,7 +65,7 @@
             data: inputData,
             tension: 0.4,
             fill: true,
-            backgroundColor: 'rgba(88, 166, 255, 0.15)',
+            backgroundColor: inputGradient,
             borderColor: 'rgba(88, 166, 255, 1)',
           },
           {
@@ -60,7 +73,7 @@
             data: outputData,
             tension: 0.4,
             fill: true,
-            backgroundColor: 'rgba(163, 113, 247, 0.15)',
+            backgroundColor: outputGradient,
             borderColor: 'rgba(163, 113, 247, 1)',
           },
         ],
