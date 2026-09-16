@@ -42,7 +42,14 @@ body {
   to { transform: rotate(360deg); }
 }
 
-.range-toggle button {
+.toolbar-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.range-toggle button,
+.source-toggle button {
   background: var(--vscode-button-secondaryBackground);
   color: var(--vscode-button-secondaryForeground);
   border: none;
@@ -50,7 +57,8 @@ body {
   cursor: pointer;
 }
 
-.range-toggle button.active {
+.range-toggle button.active,
+.source-toggle button.active {
   background: var(--vscode-button-background);
   color: var(--vscode-button-foreground);
 }

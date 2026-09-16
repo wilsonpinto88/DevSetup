@@ -6,7 +6,7 @@ import { scanAll } from './logScanner/logRepository';
 import { ScanCache } from './logScanner/scanCache';
 import { computeTotals, groupByModel, groupByWorkspace, computeDailySeries, TimeRange } from './aggregator';
 import { resolveAllowance } from './copilotAllowance';
-import { createOrShowPanel, postDashboardData } from './webviewPanel';
+import { createOrShowPanel, postDashboardData, SourceFilter } from './webviewPanel';
 import { UsageEvent } from './logScanner/types';
 
 const SCAN_CACHE_KEY = 'aiUsage.scanCache';
@@ -19,13 +19,21 @@ let scanCacheMemo: ScanCache = {};
 // accumulated across refreshes, not treated as the complete dataset.
 let accumulatedEvents: UsageEvent[] = [];
 
+// Remembered so aiUsage.refresh / aiUsage.resetCache / the auto-refresh timer
+// re-render with whatever the user last selected, instead of always resetting
+// back to month/all.
+let lastRange: TimeRange = 'month';
+let lastSource: SourceFilter = 'all';
+
 function resolveDefaultPath(configuredOverride: string, defaultRelativeToHome: string): string {
   return configuredOverride && configuredOverride.trim().length > 0
     ? configuredOverride
     : path.join(os.homedir(), ...defaultRelativeToHome.split('/'));
 }
 
-async function refreshAndRender(context: vscode.ExtensionContext, range: TimeRange) {
+async function refreshAndRender(context: vscode.ExtensionContext, range: TimeRange, source: SourceFilter) {
+  lastRange = range;
+  lastSource = source;
   const config = vscode.workspace.getConfiguration('aiUsage');
   const claudeRoot = resolveDefaultPath(config.get<string>('claudeLogsPath', ''), '.claude/projects');
   const copilotRoot = resolveDefaultPath(config.get<string>('copilotLogsPath', ''), '.copilot/session-state');
@@ -35,7 +43,7 @@ async function refreshAndRender(context: vscode.ExtensionContext, range: TimeRan
   const priorAccumulatedCount = accumulatedEvents.length;
   const { events: newEvents, cache } = scanAll(claudeRoot, copilotRoot, priorCache);
   accumulatedEvents = accumulatedEvents.concat(newEvents);
-  const events = accumulatedEvents;
+  const events = source === 'all' ? accumulatedEvents : accumulatedEvents.filter((e) => e.source === source);
   scanCacheMemo = cache;
   await context.globalState.update(SCAN_CACHE_KEY, cache);
   await context.globalState.update(EVENTS_KEY, accumulatedEvents);
@@ -66,6 +74,7 @@ async function refreshAndRender(context: vscode.ExtensionContext, range: TimeRan
     byWorkspace: groupByWorkspace(events),
     dailySeries: computeDailySeries(events, range),
     range,
+    source,
     allowance,
   });
 }
@@ -76,13 +85,13 @@ export function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(
     vscode.commands.registerCommand('aiUsage.open', async () => {
-      createOrShowPanel(context, async (range: TimeRange) => {
-        await refreshAndRender(context, range);
+      createOrShowPanel(context, async (range: TimeRange, source: SourceFilter) => {
+        await refreshAndRender(context, range, source);
       });
-      await refreshAndRender(context, 'month');
+      await refreshAndRender(context, lastRange, lastSource);
     }),
     vscode.commands.registerCommand('aiUsage.refresh', async () => {
-      await refreshAndRender(context, 'month');
+      await refreshAndRender(context, lastRange, lastSource);
     }),
     vscode.commands.registerCommand('aiUsage.resetCache', async () => {
       scanCacheMemo = {};
@@ -90,7 +99,7 @@ export function activate(context: vscode.ExtensionContext) {
       await context.globalState.update(SCAN_CACHE_KEY, {});
       await context.globalState.update(EVENTS_KEY, []);
       outputChannel.appendLine(`[${new Date().toISOString()}] cache reset — next refresh does a full rescan`);
-      await refreshAndRender(context, 'month');
+      await refreshAndRender(context, lastRange, lastSource);
     })
   );
 
@@ -98,7 +107,7 @@ export function activate(context: vscode.ExtensionContext) {
   if (autoRefreshMinutes > 0) {
     const intervalMs = autoRefreshMinutes * 60 * 1000;
     const timer = setInterval(() => {
-      refreshAndRender(context, 'month');
+      refreshAndRender(context, lastRange, lastSource);
     }, intervalMs);
     context.subscriptions.push({ dispose: () => clearInterval(timer) });
   }

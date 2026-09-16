@@ -5,6 +5,7 @@
   let modelChart;
   let workspaceChart;
   let currentRange = 'month';
+  let currentSource = 'all';
 
   const FLUID_ANIMATION = { duration: 750, easing: 'easeOutQuart' };
 
@@ -148,13 +149,22 @@
     currentRange = btn.getAttribute('data-range');
     document.querySelectorAll('.range-toggle button').forEach((b) => b.classList.remove('active'));
     btn.classList.add('active');
-    vscode.postMessage({ type: 'rangeChange', range: currentRange });
+    vscode.postMessage({ type: 'rangeChange', range: currentRange, source: currentSource });
+  });
+
+  document.getElementById('sourceToggle').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-source]');
+    if (!btn) return;
+    currentSource = btn.getAttribute('data-source');
+    document.querySelectorAll('.source-toggle button').forEach((b) => b.classList.remove('active'));
+    btn.classList.add('active');
+    vscode.postMessage({ type: 'sourceChange', range: currentRange, source: currentSource });
   });
 
   document.getElementById('refreshBtn').addEventListener('click', () => {
     const btn = document.getElementById('refreshBtn');
     btn.classList.add('spinning');
-    vscode.postMessage({ type: 'refresh', range: currentRange });
+    vscode.postMessage({ type: 'refresh', range: currentRange, source: currentSource });
   });
 
   window.addEventListener('message', (event) => {

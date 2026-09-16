@@ -16,10 +16,17 @@
         <h1>AI Usage Dashboard</h1>
         <button id="refreshBtn" class="refresh-btn" title="Refresh">&#x21bb;</button>
       </div>
-      <div class="range-toggle" id="rangeToggle">
-        <button data-range="week">Week</button>
-        <button data-range="month" class="active">Month</button>
-        <button data-range="6months">6 Months</button>
+      <div class="toolbar-controls">
+        <div class="source-toggle" id="sourceToggle">
+          <button data-source="all" class="active">All</button>
+          <button data-source="claude-code">Claude Code</button>
+          <button data-source="copilot">Copilot</button>
+        </div>
+        <div class="range-toggle" id="rangeToggle">
+          <button data-range="week">Week</button>
+          <button data-range="month" class="active">Month</button>
+          <button data-range="6months">6 Months</button>
+        </div>
       </div>
     </header>
     <section class="stat-tiles" id="statTiles"></section>

@@ -11,14 +11,17 @@ export interface DashboardData {
   byWorkspace: GroupedTotal[];
   dailySeries: DailyPoint[];
   range: TimeRange;
+  source: SourceFilter;
   allowance: AllowanceResult | undefined;
 }
 
 let currentPanel: vscode.WebviewPanel | undefined;
 
+export type SourceFilter = 'all' | 'claude-code' | 'copilot';
+
 export function createOrShowPanel(
   context: vscode.ExtensionContext,
-  onRangeChange: (range: TimeRange) => void
+  onRequestUpdate: (range: TimeRange, source: SourceFilter) => void
 ): vscode.WebviewPanel {
   if (currentPanel) {
     currentPanel.reveal();
@@ -51,8 +54,9 @@ export function createOrShowPanel(
   panel.webview.html = html;
 
   panel.webview.onDidReceiveMessage((message) => {
-    if (message?.type === 'rangeChange' || message?.type === 'refresh') {
-      onRangeChange(message.range as TimeRange);
+    if (message?.type === 'rangeChange' || message?.type === 'refresh' || message?.type === 'sourceChange') {
+      const source: SourceFilter = message.source === 'claude-code' || message.source === 'copilot' ? message.source : 'all';
+      onRequestUpdate(message.range as TimeRange, source);
     }
   });
 
