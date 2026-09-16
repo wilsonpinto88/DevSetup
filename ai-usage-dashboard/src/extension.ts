@@ -35,7 +35,20 @@ function resolveDefaultPath(configuredOverride: string, defaultRelativeToHome: s
     : path.join(os.homedir(), ...defaultRelativeToHome.split('/'));
 }
 
-async function refreshAndRender(context: vscode.ExtensionContext, range: TimeRange, source: SourceFilter) {
+// Overlapping calls (e.g. two toggle clicks in quick succession, or the
+// initial open racing a toggle click) would otherwise both read the same
+// pre-update cursor/cache state and both concat their identical results
+// into accumulatedEvents, silently doubling every count. Chaining every
+// call through this promise serializes them so only one scan+accumulate
+// runs at a time.
+let refreshChain: Promise<void> = Promise.resolve();
+
+function refreshAndRender(context: vscode.ExtensionContext, range: TimeRange, source: SourceFilter): Promise<void> {
+  refreshChain = refreshChain.then(() => doRefreshAndRender(context, range, source));
+  return refreshChain;
+}
+
+async function doRefreshAndRender(context: vscode.ExtensionContext, range: TimeRange, source: SourceFilter) {
   lastRange = range;
   lastSource = source;
   const config = vscode.workspace.getConfiguration('aiUsage');

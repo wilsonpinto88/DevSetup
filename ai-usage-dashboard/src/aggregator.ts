@@ -96,13 +96,27 @@ function weekStartISO(d: Date): string {
   return dayISO(copy);
 }
 
+// 'week' and 'month' mean present week-to-date / month-to-date (calendar
+// boundaries, matching how billing cycles and the Copilot CLI's own /usage
+// report usage), not a rolling N-day window — a rolling window double-counts
+// days from a prior cycle and never matches what the CLI shows for "this
+// month". '6months' has no calendar-cycle equivalent, so it stays rolling.
+function rangeCutoff(range: TimeRange, now: Date): Date {
+  if (range === 'week') {
+    return new Date(`${weekStartISO(now)}T00:00:00.000Z`);
+  }
+  if (range === 'month') {
+    return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  }
+  return new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000);
+}
+
 export function filterEventsByRange(
   events: UsageEvent[],
   range: TimeRange,
   now: Date = new Date()
 ): UsageEvent[] {
-  const rangeDays = range === 'week' ? 7 : range === 'month' ? 30 : 180;
-  const cutoff = new Date(now.getTime() - rangeDays * 24 * 60 * 60 * 1000);
+  const cutoff = rangeCutoff(range, now);
   return events.filter((e) => {
     const ts = new Date(e.timestamp);
     return ts >= cutoff && ts <= now;

@@ -76,6 +76,20 @@ describe('filterEventsByRange', () => {
     expect(filterEventsByRange(events, 'month', now)).toHaveLength(0);
     expect(filterEventsByRange(events, '6months', now)).toHaveLength(1);
   });
+
+  it('uses calendar month-to-date for "month", not a rolling 30-day window', () => {
+    // 2026-08-20 is within a rolling 30 days of 2026-09-16 but before the
+    // 1st of the current calendar month — present-month-to-date excludes it.
+    const events = [event({ timestamp: '2026-08-20T00:00:00.000Z' })];
+    expect(filterEventsByRange(events, 'month', now)).toHaveLength(0);
+  });
+
+  it('uses calendar week-to-date (Monday start) for "week", not a rolling 7-day window', () => {
+    // now (2026-09-16) is a Wednesday, so the week starts Monday 2026-09-14.
+    // 2026-09-13 is within a rolling 7 days but before that Monday.
+    const events = [event({ timestamp: '2026-09-13T23:00:00.000Z' })];
+    expect(filterEventsByRange(events, 'week', now)).toHaveLength(0);
+  });
 });
 
 describe('computeDailySeries', () => {
