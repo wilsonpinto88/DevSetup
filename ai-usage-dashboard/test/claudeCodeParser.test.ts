@@ -57,4 +57,43 @@ describe('parseClaudeCodeFile', () => {
     const content = [REAL_SAMPLE_LINE, REAL_SAMPLE_LINE].join('\n');
     expect(parseClaudeCodeFile(content, 's1')).toHaveLength(2);
   });
+
+  it('extracts the skill name from a Skill tool_use block on the same turn', () => {
+    const line = JSON.stringify({
+      parentUuid: '05e36474-f095-4f40-bca5-e3bccab07144',
+      isSidechain: false,
+      message: {
+        model: 'claude-sonnet-5',
+        id: 'msg_011Cf7J2xXr56KLjiw6rqUwr',
+        type: 'message',
+        role: 'assistant',
+        content: [{ type: 'tool_use', id: 'toolu_1', name: 'Skill', input: { skill: 'caveman' } }],
+        usage: { input_tokens: 2, cache_creation_input_tokens: 15670, cache_read_input_tokens: 3692, output_tokens: 60 },
+      },
+      timestamp: '2026-09-16T10:00:00.000Z',
+      cwd: 'c:\\DEV\\Fabasoft_WS',
+    });
+    const [event] = parseClaudeCodeFile(line, 's1');
+    expect(event.skillsUsed).toEqual(['caveman']);
+  });
+
+  it('omits skillsUsed when the turn has no Skill tool_use block', () => {
+    const [event] = parseClaudeCodeFile(REAL_SAMPLE_LINE, 's1');
+    expect(event.skillsUsed).toBeUndefined();
+  });
+
+  it('ignores non-Skill tool_use blocks', () => {
+    const line = JSON.stringify({
+      message: {
+        model: 'claude-sonnet-5',
+        role: 'assistant',
+        content: [{ type: 'tool_use', id: 'toolu_1', name: 'Read', input: { file_path: 'x' } }],
+        usage: { input_tokens: 1, output_tokens: 1 },
+      },
+      timestamp: '2026-09-16T10:00:00.000Z',
+      cwd: 'c:\\DEV\\Fabasoft_WS',
+    });
+    const [event] = parseClaudeCodeFile(line, 's1');
+    expect(event.skillsUsed).toBeUndefined();
+  });
 });

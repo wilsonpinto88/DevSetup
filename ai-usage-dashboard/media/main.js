@@ -34,7 +34,7 @@
     const hitRate = cacheTotal > 0 ? Math.round((totals.totalCacheReadTokens / cacheTotal) * 100) : 0;
     const isCopilotOnly = source === 'copilot';
     const tiles = [
-      { label: 'Cost', value: fmtUsd(totalCostUsd) },
+      { label: 'API-Equivalent Cost', value: fmtUsd(totalCostUsd) },
       { label: 'Messages', value: fmt(totals.eventCount) },
       { label: 'Input Tokens', value: fmt(totals.totalInputTokens) },
     ];
@@ -195,6 +195,41 @@
     });
   }
 
+  function fmtSigned(n, digits) {
+    const sign = n > 0 ? '+' : '';
+    return `${sign}${n.toFixed(digits)}%`;
+  }
+
+  function renderSkillUsageList(skillUsage) {
+    const el = document.getElementById('skillUsageList');
+    if (!skillUsage || skillUsage.length === 0) {
+      el.innerHTML = '<p>No skill invocations in the current selection.</p>';
+      return;
+    }
+    el.innerHTML = skillUsage
+      .map((s) => {
+        const deltaLabel =
+          s.avgTurnTokensVsBaselinePct === undefined
+            ? '<span class="skill-baseline-na">no baseline turns to compare</span>'
+            : `<span class="${s.avgTurnTokensVsBaselinePct <= 0 ? 'skill-delta-good' : 'skill-delta-bad'}">${fmtSigned(s.avgTurnTokensVsBaselinePct, 0)} tokens/turn vs. no-skill baseline</span>`;
+        return `
+          <div class="skill-usage-row">
+            <div class="skill-header">
+              <span class="skill-name">${s.skill}</span>
+              <span class="skill-cost">${fmtUsd(s.costUsd)}</span>
+            </div>
+            <div class="skill-stats">
+              <div class="stat"><span class="stat-label">Invocations</span><span class="stat-value">${fmt(s.invocations)}</span></div>
+              <div class="stat"><span class="stat-label">Input Tokens</span><span class="stat-value">${fmt(s.inputTokens)}</span></div>
+              <div class="stat"><span class="stat-label">Output Tokens</span><span class="stat-value">${fmt(s.outputTokens)}</span></div>
+              <div class="stat"><span class="stat-label">% of API-Equiv. Cost</span><span class="stat-value">${s.pctOfTotalCost === undefined ? '—' : s.pctOfTotalCost.toFixed(1) + '%'}</span></div>
+            </div>
+            <div class="skill-delta">${deltaLabel}</div>
+          </div>`;
+      })
+      .join('');
+  }
+
   function renderWorkspaceList(byWorkspace) {
     const el = document.getElementById('workspaceList');
     if (byWorkspace.length === 0) {
@@ -232,6 +267,7 @@
     renderDailyChart(data.dailySeries, data.source);
     renderModelUsageList(data.byModel, data.source);
     renderWorkspaceList(data.byWorkspace);
+    renderSkillUsageList(data.skillUsage);
   }
 
   document.getElementById('rangeToggle').addEventListener('click', (e) => {

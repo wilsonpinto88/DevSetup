@@ -1,4 +1,5 @@
 import { UsageEvent } from './logScanner/types';
+import { computeCost } from './pricing';
 
 export interface Totals {
   totalInputTokens: number;
@@ -123,6 +124,24 @@ export function filterEventsByRange(
   });
 }
 
+// Buckets with no events must still appear (as zero points), or a range
+// with activity on only one day renders as a single-point chart instead of
+// spanning the full selected period (e.g. "This Week" with only Wednesday's
+// data would otherwise show just one dot instead of Mon-Sun).
+function bucketKeysInRange(cutoff: Date, now: Date, bucketByWeek: boolean): string[] {
+  const stepMs = (bucketByWeek ? 7 : 1) * 24 * 60 * 60 * 1000;
+  const startKey = bucketByWeek ? weekStartISO(cutoff) : dayISO(cutoff);
+  const endKey = bucketByWeek ? weekStartISO(now) : dayISO(now);
+  const keys: string[] = [];
+  let cursor = new Date(`${startKey}T00:00:00.000Z`);
+  const end = new Date(`${endKey}T00:00:00.000Z`);
+  while (cursor <= end) {
+    keys.push(dayISO(cursor));
+    cursor = new Date(cursor.getTime() + stepMs);
+  }
+  return keys;
+}
+
 export function computeDailySeries(
   events: UsageEvent[],
   range: TimeRange,
@@ -141,12 +160,97 @@ export function computeDailySeries(
     bucketed.set(bucketKey, entry);
   }
 
-  return Array.from(bucketed.entries())
-    .map(([bucket, v]) => ({
+  const cutoff = rangeCutoff(range, now);
+  return bucketKeysInRange(cutoff, now, bucketByWeek).map((bucket) => {
+    const v = bucketed.get(bucket);
+    return {
       bucket,
-      inputTokens: v.inputTokens,
-      outputTokens: v.outputTokens,
-      sessionCount: v.sessionIds.size,
-    }))
-    .sort((a, b) => a.bucket.localeCompare(b.bucket));
+      inputTokens: v?.inputTokens ?? 0,
+      outputTokens: v?.outputTokens ?? 0,
+      sessionCount: v?.sessionIds.size ?? 0,
+    };
+  });
+}
+
+export interface SkillUsage {
+  skill: string;
+  invocations: number;
+  inputTokens: number;
+  outputTokens: number;
+  costUsd: number | undefined; // undefined only when no invoking turn has a known pricing rate
+  pctOfTotalCost: number | undefined;
+  avgTurnTokens: number; // avg (input+output+cacheRead+cacheWrite) across this skill's invoking turns
+  // Rough proxy only, not a measured saving: % difference between avgTurnTokens
+  // and the average turn size on Claude Code turns that invoked no skill at
+  // all. There is no counterfactual in the logs (what the same turn would
+  // have cost without the skill), so this cannot prove the skill caused the
+  // difference — it just flags turns that run heavier or lighter than baseline.
+  avgTurnTokensVsBaselinePct: number | undefined;
+}
+
+function turnTokenWeight(e: UsageEvent): number {
+  return e.inputTokens + e.outputTokens + e.cacheReadTokens + e.cacheWriteTokens;
+}
+
+export function computeSkillUsage(events: UsageEvent[]): SkillUsage[] {
+  const claudeEvents = events.filter((e) => e.source === 'claude-code');
+  const baselineTurns = claudeEvents.filter((e) => !e.skillsUsed || e.skillsUsed.length === 0);
+  const baselineAvgTokens =
+    baselineTurns.length > 0
+      ? baselineTurns.reduce((sum, e) => sum + turnTokenWeight(e), 0) / baselineTurns.length
+      : undefined;
+
+  const totalCostAll = claudeEvents.reduce((sum, e) => {
+    const cost = computeCost(e.inputTokens, e.outputTokens, e.cacheWriteTokens, e.cacheReadTokens, e.model);
+    return cost !== undefined ? sum + cost : sum;
+  }, 0);
+
+  interface Accum {
+    invocations: number;
+    inputTokens: number;
+    outputTokens: number;
+    costUsd: number;
+    hasCost: boolean;
+    turnTokensSum: number;
+  }
+  const bySkill = new Map<string, Accum>();
+  for (const e of claudeEvents) {
+    if (!e.skillsUsed || e.skillsUsed.length === 0) {
+      continue;
+    }
+    const cost = computeCost(e.inputTokens, e.outputTokens, e.cacheWriteTokens, e.cacheReadTokens, e.model);
+    const tokens = turnTokenWeight(e);
+    for (const skill of e.skillsUsed) {
+      const entry: Accum =
+        bySkill.get(skill) ?? { invocations: 0, inputTokens: 0, outputTokens: 0, costUsd: 0, hasCost: false, turnTokensSum: 0 };
+      entry.invocations += 1;
+      entry.inputTokens += e.inputTokens;
+      entry.outputTokens += e.outputTokens;
+      entry.turnTokensSum += tokens;
+      if (cost !== undefined) {
+        entry.costUsd += cost;
+        entry.hasCost = true;
+      }
+      bySkill.set(skill, entry);
+    }
+  }
+
+  return Array.from(bySkill.entries())
+    .map(([skill, v]) => {
+      const avgTurnTokens = v.turnTokensSum / v.invocations;
+      return {
+        skill,
+        invocations: v.invocations,
+        inputTokens: v.inputTokens,
+        outputTokens: v.outputTokens,
+        costUsd: v.hasCost ? v.costUsd : undefined,
+        pctOfTotalCost: v.hasCost && totalCostAll > 0 ? (v.costUsd / totalCostAll) * 100 : undefined,
+        avgTurnTokens,
+        avgTurnTokensVsBaselinePct:
+          baselineAvgTokens !== undefined && baselineAvgTokens > 0
+            ? ((avgTurnTokens - baselineAvgTokens) / baselineAvgTokens) * 100
+            : undefined,
+      };
+    })
+    .sort((a, b) => b.invocations - a.invocations);
 }

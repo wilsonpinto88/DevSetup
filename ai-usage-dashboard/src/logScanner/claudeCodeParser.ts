@@ -18,6 +18,11 @@ export function parseClaudeCodeLine(line: string, sessionId: string): UsageEvent
     return null;
   }
   const usage = msg.usage;
+  const skillsUsed = Array.isArray(msg.content)
+    ? msg.content
+        .filter((block: any) => block?.type === 'tool_use' && block?.name === 'Skill' && block?.input?.skill)
+        .map((block: any) => block.input.skill as string)
+    : [];
   return {
     source: 'claude-code',
     sessionId,
@@ -28,6 +33,7 @@ export function parseClaudeCodeLine(line: string, sessionId: string): UsageEvent
     outputTokens: usage.output_tokens ?? 0,
     cacheReadTokens: usage.cache_read_input_tokens ?? 0,
     cacheWriteTokens: usage.cache_creation_input_tokens ?? 0,
+    ...(skillsUsed.length > 0 ? { skillsUsed } : {}),
   };
 }
 

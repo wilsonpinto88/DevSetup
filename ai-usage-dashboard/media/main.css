@@ -272,3 +272,84 @@ body {
   font-size: 0.85em;
   color: var(--vscode-descriptionForeground);
 }
+
+.skill-usage-note {
+  font-size: 0.8em;
+  color: var(--vscode-descriptionForeground);
+  margin: -4px 0 14px;
+}
+
+.skill-usage-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.skill-usage-row {
+  background: var(--vscode-editor-background);
+  border: 1px solid var(--vscode-widget-border);
+  border-radius: 6px;
+  padding: 14px 16px;
+}
+
+.skill-usage-row .skill-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #a371f7;
+}
+
+.skill-usage-row .skill-name {
+  font-weight: 600;
+  font-size: 1.05em;
+}
+
+.skill-usage-row .skill-cost {
+  font-size: 1.2em;
+  font-weight: 600;
+  color: var(--vscode-charts-green, #3fb950);
+}
+
+.skill-usage-row .skill-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 10px 16px;
+}
+
+.skill-usage-row .skill-stats .stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.skill-usage-row .skill-stats .stat-label {
+  font-size: 0.78em;
+  color: var(--vscode-descriptionForeground);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.skill-usage-row .skill-stats .stat-value {
+  font-size: 1em;
+  font-weight: 500;
+  color: var(--vscode-foreground);
+}
+
+.skill-usage-row .skill-delta {
+  margin-top: 10px;
+  font-size: 0.8em;
+}
+
+.skill-delta-good {
+  color: var(--vscode-charts-green, #3fb950);
+}
+
+.skill-delta-bad {
+  color: var(--vscode-charts-orange, #e3b341);
+}
+
+.skill-baseline-na {
+  color: var(--vscode-descriptionForeground);
+}

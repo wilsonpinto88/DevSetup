@@ -1,6 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import { UsageEvent } from '../src/logScanner/types';
-import { computeTotals, groupByModel, groupByWorkspace, computeDailySeries, filterEventsByRange } from '../src/aggregator';
+import {
+  computeTotals,
+  groupByModel,
+  groupByWorkspace,
+  computeDailySeries,
+  filterEventsByRange,
+  computeSkillUsage,
+} from '../src/aggregator';
 
 function event(overrides: Partial<UsageEvent>): UsageEvent {
   return {
@@ -95,22 +102,26 @@ describe('filterEventsByRange', () => {
 describe('computeDailySeries', () => {
   const now = new Date('2026-09-16T12:00:00.000Z');
 
-  it('buckets by day for the week range and excludes events outside it', () => {
+  it('zero-fills every day in the week range, excluding events outside it', () => {
+    // now (2026-09-16) is a Wednesday, so the week-to-date range is Mon 09-14..Wed 09-16.
     const events = [
       event({ timestamp: '2026-09-15T00:00:00.000Z' }),
-      event({ timestamp: '2026-08-01T00:00:00.000Z' }), // outside 7-day window
+      event({ timestamp: '2026-08-01T00:00:00.000Z' }), // outside week-to-date window
     ];
     const series = computeDailySeries(events, 'week', now);
-    expect(series).toHaveLength(1);
-    expect(series[0].bucket).toBe('2026-09-15');
+    expect(series.map((p) => p.bucket)).toEqual(['2026-09-14', '2026-09-15', '2026-09-16']);
+    expect(series.find((p) => p.bucket === '2026-09-15')?.inputTokens).toBe(10);
+    expect(series.find((p) => p.bucket === '2026-09-14')?.inputTokens).toBe(0);
   });
 
-  it('buckets by week for the 6months range', () => {
+  it('zero-fills every week bucket for the 6months range', () => {
     const events = [event({ timestamp: '2026-08-10T00:00:00.000Z' })];
     const series = computeDailySeries(events, '6months', now);
-    expect(series).toHaveLength(1);
-    // Monday of the week containing 2026-08-10
-    expect(series[0].bucket).toBe('2026-08-10');
+    // Monday of the week containing 2026-08-10 through the week containing now.
+    const hit = series.find((p) => p.bucket === '2026-08-10');
+    expect(hit?.inputTokens).toBe(10);
+    expect(series.length).toBeGreaterThan(1);
+    expect(series.some((p) => p.inputTokens === 0)).toBe(true);
   });
 
   it('counts distinct sessions per bucket', () => {
@@ -120,6 +131,50 @@ describe('computeDailySeries', () => {
       event({ sessionId: 'b', timestamp: '2026-09-15T03:00:00.000Z' }),
     ];
     const series = computeDailySeries(events, 'week', now);
-    expect(series[0].sessionCount).toBe(2);
+    expect(series.find((p) => p.bucket === '2026-09-15')?.sessionCount).toBe(2);
+  });
+});
+
+describe('computeSkillUsage', () => {
+  it('ignores Copilot events and turns with no skill invoked', () => {
+    const events = [
+      event({ skillsUsed: undefined }),
+      event({ source: 'copilot', skillsUsed: ['caveman'] as any }),
+    ];
+    expect(computeSkillUsage(events)).toEqual([]);
+  });
+
+  it('counts invocations and sums tokens/cost per skill', () => {
+    const events = [
+      event({ skillsUsed: ['caveman'], inputTokens: 100, outputTokens: 50 }),
+      event({ skillsUsed: ['caveman'], inputTokens: 20, outputTokens: 10 }),
+      event({ skillsUsed: ['brainstorming'], inputTokens: 5, outputTokens: 5 }),
+    ];
+    const usage = computeSkillUsage(events);
+    const caveman = usage.find((u) => u.skill === 'caveman')!;
+    expect(caveman.invocations).toBe(2);
+    expect(caveman.inputTokens).toBe(120);
+    expect(caveman.outputTokens).toBe(60);
+    expect(caveman.costUsd).toBeCloseTo((120 * 3) / 1_000_000 + (60 * 15) / 1_000_000, 10);
+    // sorted by invocation count descending
+    expect(usage[0].skill).toBe('caveman');
+  });
+
+  it('flags turns that run heavier or lighter than the no-skill baseline, as a labeled proxy only', () => {
+    const events = [
+      event({ skillsUsed: undefined, inputTokens: 100, outputTokens: 0 }), // baseline avg = 100
+      event({ skillsUsed: undefined, inputTokens: 100, outputTokens: 0 }),
+      event({ skillsUsed: ['caveman'], inputTokens: 200, outputTokens: 0 }), // double baseline
+    ];
+    const usage = computeSkillUsage(events);
+    const caveman = usage.find((u) => u.skill === 'caveman')!;
+    expect(caveman.avgTurnTokens).toBe(200);
+    expect(caveman.avgTurnTokensVsBaselinePct).toBeCloseTo(100, 5); // +100% vs baseline
+  });
+
+  it('returns undefined baseline delta when there are no no-skill turns to compare against', () => {
+    const events = [event({ skillsUsed: ['caveman'] })];
+    const usage = computeSkillUsage(events);
+    expect(usage[0].avgTurnTokensVsBaselinePct).toBeUndefined();
   });
 });

@@ -5,7 +5,15 @@ import * as os from 'os';
 import { scanAll } from './logScanner/logRepository';
 import { ScanCache } from './logScanner/scanCache';
 import { CopilotDbCursor } from './logScanner/copilotDb';
-import { computeTotals, groupByModel, groupByWorkspace, computeDailySeries, filterEventsByRange, TimeRange } from './aggregator';
+import {
+  computeTotals,
+  groupByModel,
+  groupByWorkspace,
+  computeDailySeries,
+  filterEventsByRange,
+  computeSkillUsage,
+  TimeRange,
+} from './aggregator';
 import { resolveAllowance } from './copilotAllowance';
 import { computeCost, computeCostBreakdown, CostBreakdown } from './pricing';
 import { createOrShowPanel, postDashboardData, SourceFilter, ModelUsageEntry } from './webviewPanel';
@@ -126,6 +134,7 @@ async function doRefreshAndRender(context: vscode.ExtensionContext, range: TimeR
     byModel,
     byWorkspace: groupByWorkspace(rangeEvents),
     dailySeries: computeDailySeries(events, range),
+    skillUsage: computeSkillUsage(rangeEvents),
     range,
     source,
     allowance,

@@ -2,7 +2,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import { Totals, GroupedTotal, DailyPoint, TimeRange } from './aggregator';
+import { Totals, GroupedTotal, DailyPoint, SkillUsage, TimeRange } from './aggregator';
 import { AllowanceResult } from './copilotAllowance';
 import { CostBreakdown } from './pricing';
 
@@ -13,6 +13,7 @@ export interface DashboardData {
   byModel: ModelUsageEntry[];
   byWorkspace: GroupedTotal[];
   dailySeries: DailyPoint[];
+  skillUsage: SkillUsage[];
   range: TimeRange;
   source: SourceFilter;
   allowance: AllowanceResult | undefined;
