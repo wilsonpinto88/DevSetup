@@ -6,12 +6,43 @@
   "engines": { "vscode": "^1.85.0" },
   "categories": ["Other"],
   "main": "./out/extension.js",
-  "activationEvents": [],
+  "activationEvents": ["onCommand:aiUsage.open"],
   "scripts": {
     "compile": "tsc -p ./",
     "watch": "tsc -w -p ./",
     "test": "vitest run",
     "package": "vsce package"
+  },
+  "contributes": {
+    "commands": [
+      { "command": "aiUsage.open", "title": "AI Usage: Open Dashboard" },
+      { "command": "aiUsage.refresh", "title": "AI Usage: Refresh Now" }
+    ],
+    "configuration": {
+      "title": "AI Usage Dashboard",
+      "properties": {
+        "aiUsage.copilotMonthlyAllowance": {
+          "type": "number",
+          "default": null,
+          "description": "Manual fallback for Copilot monthly credit allowance, used only if the automatic GitHub session lookup fails."
+        },
+        "aiUsage.autoRefreshMinutes": {
+          "type": "number",
+          "default": 0,
+          "description": "Minutes between automatic dashboard refreshes. 0 disables auto-refresh."
+        },
+        "aiUsage.claudeLogsPath": {
+          "type": "string",
+          "default": "",
+          "description": "Override for the Claude Code logs directory. Empty uses the default ~/.claude/projects."
+        },
+        "aiUsage.copilotLogsPath": {
+          "type": "string",
+          "default": "",
+          "description": "Override for the Copilot session-state directory. Empty uses the default ~/.copilot/session-state."
+        }
+      }
+    }
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
