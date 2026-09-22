@@ -31,7 +31,7 @@ Other commands:
 ## What it shows
 
 - **Stat tiles** — messages, tokens, cache hit rate, sessions, and either API-Equivalent Cost (Claude Code / "All") or real Copilot Credits (Copilot tab)
-- **Cost Composition** — $ breakdown by input/output/cache-read/cache-write (Claude Code only — GitHub reports one total credit figure per Copilot call, no sub-breakdown)
+- **Cost Composition** — $ breakdown by input/output/cache-read/cache-write for Claude Code/"All"; retitles to **Token Composition** for the Copilot tab (GitHub reports one total credit figure per call, no $/credit sub-breakdown — token share is shown instead, since that's real per-call data)
 - **Daily Usage** — token activity for Claude Code/"All"; real Copilot Credits for the Copilot tab (a different unit, so it gets its own single-line series instead of being forced into the token chart)
 - **Model Usage** — per-model breakdown; Claude Code models without a confirmed public price show `—` instead of a guessed cost, Copilot models show real credits instead (known for every model, not just priced ones)
 - **Usage by Workspace** — which projects you've used AI in
@@ -39,10 +39,13 @@ Other commands:
 
 ## Fixed issues
 
+> **If you're a returning tester: the Copilot side of this dashboard changed significantly on 2026-09-22.** Numbers you saw before this date are not comparable — re-download the `.vsix` and run **AI Usage: Reset Cache & Rescan** (see below) before trusting anything on the Copilot tab again.
+
 - **Copilot's Output Tokens was undercounting reasoning models by up to ~26% (fixed).** `assistant_usage_events` tracks `reasoning_tokens` in a separate column from `output_tokens` — for reasoning models like `gpt-5-mini`, that's real, separately-billed generation output that was never being read. Now folded into `outputTokens`, so Output Tokens is accurate for every Copilot model, not just non-reasoning ones. This also means Output Tokens (previously hidden for Copilot as unreliable) is now shown everywhere — stat tiles, Model Usage, the daily chart's token mode.
 - **Copilot metrics are now Credits-based throughout, not tokens/$.** Copilot's real billing unit is credits (`total_nano_aiu`), not tokens or the Anthropic $ pricing table it has no entry in. The Copilot tab's stat tiles, Daily Usage chart, Model Usage, Usage by Workspace, and Skills Used all lead with real credits now instead of a near-meaningless ~$0 "API-Equivalent Cost" or a token count that isn't what you're actually billed on. The "All" view still shows $ (Claude Code's real unit) with a "Copilot portion: N credits" note where relevant, since the two sources bill in genuinely different units that can't be summed into one number.
 - **Copilot totals were previously inflated, then briefly under-corrected (fixed).** The Copilot CLI's telemetry writer sometimes logs the same call twice with an identical payload (a retry) — confirmed via direct SQL against `session-store.db`, ~300 credits' worth of pure double-counting in one real month of data. Duplicate rows (same session/timestamp/model/token counts) are deduped, keeping only the first. A follow-up attempt also excluded calls with `request_multiplier` of `0`/`null` from the credits total, assuming that meant "not billed" — but comparing against GitHub's real Credits panel showed this undercounted by almost exactly the amount excluded, so `request_multiplier` and `total_nano_aiu` are independent metrics: the former is a legacy premium-request multiplier, the latter is billed regardless of it. `total_nano_aiu` is now summed unconditionally (after dedup); `request_multiplier` still feeds the separate "Premium Reqs" legacy counter only.
-  **If you installed an earlier build**: run **AI Usage: Reset Cache & Rescan** once — your already-scanned data predates this fix and won't correct itself on a normal refresh.
+- **Cost Composition showed a bare "not available" message for Copilot (fixed).** Credit composition genuinely isn't available (no per-component split in the source data), but token composition is real per-call data — the section now retitles to "Token Composition" and shows that breakdown for the Copilot tab instead of an empty note.
+  **If you installed an earlier build**: run **AI Usage: Reset Cache & Rescan** once — your already-scanned data predates these fixes and won't correct itself on a normal refresh.
 
 ## Known limitations — please read before giving feedback
 
