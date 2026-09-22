@@ -80,6 +80,7 @@ interface AssistantUsageRow {
   output_tokens: number | null;
   cache_read_tokens: number | null;
   cache_write_tokens: number | null;
+  reasoning_tokens: number | null;
   total_nano_aiu: number | null;
   request_multiplier: number | null;
   created_at: string;
@@ -112,8 +113,8 @@ export function readCopilotEvents(dbPath: string, cursor: CopilotDbCursor): Copi
     const rows = db
       .prepare(
         `SELECT e.id, e.session_id, e.model, e.input_tokens, e.output_tokens,
-                e.cache_read_tokens, e.cache_write_tokens, e.total_nano_aiu,
-                e.request_multiplier, e.created_at, s.cwd as workspace
+                e.cache_read_tokens, e.cache_write_tokens, e.reasoning_tokens,
+                e.total_nano_aiu, e.request_multiplier, e.created_at, s.cwd as workspace
          FROM assistant_usage_events e
          LEFT JOIN sessions s ON s.id = e.session_id
          WHERE e.id > ?
@@ -133,7 +134,7 @@ export function readCopilotEvents(dbPath: string, cursor: CopilotDbCursor): Copi
     const events: UsageEvent[] = [];
     for (const row of rows) {
       maxId = Math.max(maxId, row.id);
-      const dedupeKey = `${row.session_id}|${row.created_at}|${row.model}|${row.input_tokens}|${row.output_tokens}|${row.total_nano_aiu}`;
+      const dedupeKey = `${row.session_id}|${row.created_at}|${row.model}|${row.input_tokens}|${row.output_tokens}|${row.reasoning_tokens}|${row.total_nano_aiu}`;
       if (seenKeys.has(dedupeKey)) {
         continue;
       }
@@ -156,7 +157,12 @@ export function readCopilotEvents(dbPath: string, cursor: CopilotDbCursor): Copi
         model: row.model ?? 'unknown',
         workspace: normalizeWorkspace(row.workspace ?? ''),
         inputTokens: row.input_tokens ?? 0,
-        outputTokens: row.output_tokens ?? 0,
+        // reasoning_tokens is billed generation output, tracked in a separate
+        // column from output_tokens — folding it in here keeps "output
+        // tokens" meaning "everything the model generated", not just the
+        // visible completion (was previously undercounting reasoning models
+        // like gpt-5-mini by ~26% of their real output volume).
+        outputTokens: (row.output_tokens ?? 0) + (row.reasoning_tokens ?? 0),
         cacheReadTokens: row.cache_read_tokens ?? 0,
         cacheWriteTokens: row.cache_write_tokens ?? 0,
         nanoAiu: row.total_nano_aiu ?? 0,

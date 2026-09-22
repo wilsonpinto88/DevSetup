@@ -24,6 +24,7 @@ function makeCopilotDb(dbPath: string) {
       output_tokens INTEGER,
       cache_read_tokens INTEGER,
       cache_write_tokens INTEGER,
+      reasoning_tokens INTEGER,
       total_nano_aiu INTEGER,
       request_multiplier REAL,
       created_at TEXT

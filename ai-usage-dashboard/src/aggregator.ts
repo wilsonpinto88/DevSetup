@@ -82,6 +82,7 @@ export interface DailyPoint {
   bucket: string; // ISO date (day start, UTC)
   inputTokens: number;
   outputTokens: number;
+  nanoAiu: number;
   sessionCount: number;
 }
 
@@ -148,14 +149,15 @@ export function computeDailySeries(
   now: Date = new Date()
 ): DailyPoint[] {
   const bucketByWeek = range === '6months';
-  const bucketed = new Map<string, { inputTokens: number; outputTokens: number; sessionIds: Set<string> }>();
+  const bucketed = new Map<string, { inputTokens: number; outputTokens: number; nanoAiu: number; sessionIds: Set<string> }>();
 
   for (const e of filterEventsByRange(events, range, now)) {
     const ts = new Date(e.timestamp);
     const bucketKey = bucketByWeek ? weekStartISO(ts) : dayISO(ts);
-    const entry = bucketed.get(bucketKey) ?? { inputTokens: 0, outputTokens: 0, sessionIds: new Set<string>() };
+    const entry = bucketed.get(bucketKey) ?? { inputTokens: 0, outputTokens: 0, nanoAiu: 0, sessionIds: new Set<string>() };
     entry.inputTokens += e.inputTokens;
     entry.outputTokens += e.outputTokens;
+    entry.nanoAiu += e.nanoAiu ?? 0;
     entry.sessionIds.add(`${e.source}:${e.sessionId}`);
     bucketed.set(bucketKey, entry);
   }
@@ -167,6 +169,7 @@ export function computeDailySeries(
       bucket,
       inputTokens: v?.inputTokens ?? 0,
       outputTokens: v?.outputTokens ?? 0,
+      nanoAiu: v?.nanoAiu ?? 0,
       sessionCount: v?.sessionIds.size ?? 0,
     };
   });
@@ -179,6 +182,8 @@ export interface SkillUsage {
   outputTokens: number;
   costUsd: number | undefined; // undefined only when no invoking turn has a known pricing rate
   pctOfTotalCost: number | undefined;
+  nanoAiu: number; // real Copilot credits (0 for Claude-only skill entries)
+  pctOfTotalCredits: number | undefined;
   avgTurnTokens: number; // avg (input+output+cacheRead+cacheWrite) across this skill's invoking turns
   // Rough proxy only, not a measured saving: % difference between avgTurnTokens
   // and the average turn size on Claude Code turns that invoked no skill at
@@ -206,6 +211,7 @@ export function computeSkillUsage(events: UsageEvent[]): SkillUsage[] {
     const cost = computeCost(e.inputTokens, e.outputTokens, e.cacheWriteTokens, e.cacheReadTokens, e.model);
     return cost !== undefined ? sum + cost : sum;
   }, 0);
+  const totalNanoAiuAll = events.reduce((sum, e) => sum + (e.nanoAiu ?? 0), 0);
 
   interface Accum {
     invocations: number;
@@ -213,6 +219,7 @@ export function computeSkillUsage(events: UsageEvent[]): SkillUsage[] {
     outputTokens: number;
     costUsd: number;
     hasCost: boolean;
+    nanoAiu: number;
     turnTokensSum: number;
   }
   const bySkill = new Map<string, Accum>();
@@ -224,10 +231,11 @@ export function computeSkillUsage(events: UsageEvent[]): SkillUsage[] {
     const tokens = turnTokenWeight(e);
     for (const skill of e.skillsUsed) {
       const entry: Accum =
-        bySkill.get(skill) ?? { invocations: 0, inputTokens: 0, outputTokens: 0, costUsd: 0, hasCost: false, turnTokensSum: 0 };
+        bySkill.get(skill) ?? { invocations: 0, inputTokens: 0, outputTokens: 0, costUsd: 0, hasCost: false, nanoAiu: 0, turnTokensSum: 0 };
       entry.invocations += 1;
       entry.inputTokens += e.inputTokens;
       entry.outputTokens += e.outputTokens;
+      entry.nanoAiu += e.nanoAiu ?? 0;
       entry.turnTokensSum += tokens;
       if (cost !== undefined) {
         entry.costUsd += cost;
@@ -247,6 +255,8 @@ export function computeSkillUsage(events: UsageEvent[]): SkillUsage[] {
         outputTokens: v.outputTokens,
         costUsd: v.hasCost ? v.costUsd : undefined,
         pctOfTotalCost: v.hasCost && totalCostAll > 0 ? (v.costUsd / totalCostAll) * 100 : undefined,
+        nanoAiu: v.nanoAiu,
+        pctOfTotalCredits: v.nanoAiu > 0 && totalNanoAiuAll > 0 ? (v.nanoAiu / totalNanoAiuAll) * 100 : undefined,
         avgTurnTokens,
         avgTurnTokensVsBaselinePct:
           baselineAvgTokens !== undefined && baselineAvgTokens > 0

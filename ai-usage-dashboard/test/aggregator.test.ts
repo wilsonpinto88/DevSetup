@@ -133,6 +133,13 @@ describe('computeDailySeries', () => {
     const series = computeDailySeries(events, 'week', now);
     expect(series.find((p) => p.bucket === '2026-09-15')?.sessionCount).toBe(2);
   });
+
+  it('sums nanoAiu per bucket, zero-filled for buckets with no Copilot usage', () => {
+    const events = [event({ source: 'copilot', timestamp: '2026-09-15T00:00:00.000Z', nanoAiu: 500_000_000 })];
+    const series = computeDailySeries(events, 'week', now);
+    expect(series.find((p) => p.bucket === '2026-09-15')?.nanoAiu).toBe(500_000_000);
+    expect(series.find((p) => p.bucket === '2026-09-14')?.nanoAiu).toBe(0);
+  });
 });
 
 describe('computeSkillUsage', () => {
@@ -149,6 +156,19 @@ describe('computeSkillUsage', () => {
     expect(usage).toHaveLength(1);
     expect(usage[0].skill).toBe('caveman');
     expect(usage[0].invocations).toBe(1);
+  });
+
+  it('sums Copilot credits (nanoAiu) per skill, separate from Claude Code $ cost', () => {
+    const events = [
+      event({ source: 'copilot', model: 'gpt-5.4-mini', skillsUsed: ['caveman'], nanoAiu: 500_000_000 }),
+      event({ source: 'copilot', model: 'gpt-5.4-mini', skillsUsed: ['caveman'], nanoAiu: 300_000_000 }),
+      event({ source: 'copilot', model: 'gpt-5.4-mini', nanoAiu: 200_000_000 }), // no skill -> counts toward the credits denominator, not a skill entry
+    ];
+    const usage = computeSkillUsage(events);
+    const caveman = usage.find((u) => u.skill === 'caveman')!;
+    expect(caveman.nanoAiu).toBe(800_000_000);
+    expect(caveman.pctOfTotalCredits).toBeCloseTo(80, 5); // 800M of 1000M total
+    expect(caveman.costUsd).toBeUndefined(); // Copilot models aren't in the Anthropic pricing table
   });
 
   it('counts invocations and sums tokens/cost per skill', () => {

@@ -38,16 +38,18 @@
     const cacheTotal = totals.totalCacheReadTokens + totals.totalCacheWriteTokens;
     const hitRate = cacheTotal > 0 ? Math.round((totals.totalCacheReadTokens / cacheTotal) * 100) : 0;
     const isCopilotOnly = source === 'copilot';
+    // Copilot's real billing unit is credits (nanoAiu), not $ — the
+    // Anthropic-pricing "API-Equivalent Cost" tile is misleading here (it's
+    // always ~$0 since Copilot models aren't in that pricing table).
+    const leadTile = isCopilotOnly
+      ? { label: 'Copilot Credits', value: fmtCredits(totals.totalNanoAiu) }
+      : { label: 'API-Equivalent Cost', value: fmtUsd(totalCostUsd) };
     const tiles = [
-      { label: 'API-Equivalent Cost', value: fmtUsd(totalCostUsd) },
+      leadTile,
       { label: 'Messages', value: fmt(totals.eventCount) },
       { label: 'Input Tokens', value: fmt(totals.totalInputTokens) },
+      { label: 'Output Tokens', value: fmt(totals.totalOutputTokens) },
     ];
-    // Copilot's usage_checkpoint log records never include an output-token
-    // count, so that tile would always read 0 and mislead rather than inform.
-    if (!isCopilotOnly) {
-      tiles.push({ label: 'Output Tokens', value: fmt(totals.totalOutputTokens) });
-    }
     tiles.push(
       { label: 'Input Cache (Miss)', value: fmt(totals.totalCacheWriteTokens) },
       { label: 'Input Cache (Hit)', value: fmt(totals.totalCacheReadTokens) },
@@ -55,11 +57,10 @@
       { label: 'Sessions', value: fmt(totals.sessionCount) }
     );
     if (isCopilotOnly) {
-      tiles.push({ label: 'Copilot AI Units', value: fmt(totals.totalNanoAiu / 1e9) });
       tiles.push({ label: 'Copilot Premium Reqs', value: fmt(totals.totalPremiumRequests) });
     } else if (totals.totalNanoAiu > 0 || totals.totalPremiumRequests > 0) {
       if (totals.totalNanoAiu > 0) {
-        tiles.push({ label: 'Copilot AI Units', value: fmt(totals.totalNanoAiu / 1e9) });
+        tiles.push({ label: 'Copilot Credits', value: fmtCredits(totals.totalNanoAiu) });
       }
       if (totals.totalPremiumRequests > 0) {
         tiles.push({ label: 'Copilot Premium Reqs', value: fmt(totals.totalPremiumRequests) });
@@ -77,6 +78,13 @@
   function renderCostComposition(costBreakdown, source) {
     const barEl = document.getElementById('costBar');
     const legendEl = document.getElementById('costLegend');
+    // GitHub reports one total_nano_aiu per call, with no input/output/cache
+    // sub-breakdown — there's no equivalent composition to show for Copilot.
+    if (source === 'copilot') {
+      barEl.innerHTML = '';
+      legendEl.innerHTML = '<span>Not available for Copilot — GitHub reports one total credit figure per call, not a per-component breakdown.</span>';
+      return;
+    }
     if (!costBreakdown) {
       barEl.innerHTML = '';
       legendEl.innerHTML = '<span>No priced models in the current selection.</span>';
@@ -84,9 +92,7 @@
     }
     const segments = [
       { label: 'Input Tokens', value: costBreakdown.inputUsd, color: '#58a6ff' },
-      // Copilot logs never report output tokens, so this segment is always
-      // zero there — leaving it out avoids a permanently-empty legend entry.
-      ...(source === 'copilot' ? [] : [{ label: 'Output Tokens', value: costBreakdown.outputUsd, color: '#e3b341' }]),
+      { label: 'Output Tokens', value: costBreakdown.outputUsd, color: '#e3b341' },
       { label: 'Input Cache (Miss)', value: costBreakdown.cacheWriteUsd, color: '#a371f7' },
       { label: 'Input Cache (Hit)', value: costBreakdown.cacheReadUsd, color: '#3fb950' },
     ];
@@ -133,8 +139,7 @@
         const stats = [
           { label: 'Messages', value: fmt(m.eventCount) },
           { label: 'Input Tokens', value: fmt(m.inputTokens) },
-          // Copilot logs never report output tokens — omit the misleading always-0 stat.
-          ...(source === 'copilot' ? [] : [{ label: 'Output Tokens', value: fmt(m.outputTokens) }]),
+          { label: 'Output Tokens', value: fmt(m.outputTokens) },
           { label: 'Input Cache (Miss)', value: fmt(m.cacheWriteTokens) },
           { label: 'Input Cache (Hit)', value: fmt(m.cacheReadTokens) },
           { label: 'Cache Hit Rate', value: `${hitRate}%` },
@@ -161,48 +166,49 @@
     const canvas = document.getElementById('dailyChart');
     const ctx = canvas.getContext('2d');
     const labels = dailySeries.map((p) => shortDateLabel(p.bucket));
-    const inputData = dailySeries.map((p) => p.inputTokens);
-    const outputData = dailySeries.map((p) => p.outputTokens);
-    const inputGradient = makeGradient(ctx, canvas, '88, 166, 255');
-    const outputGradient = makeGradient(ctx, canvas, '163, 113, 247');
-    // Copilot logs never report output tokens, so that line would just sit at 0.
-    const hideOutput = source === 'copilot';
 
-    if (dailyChart) {
-      dailyChart.data.labels = labels;
-      dailyChart.data.datasets[0].data = inputData;
-      dailyChart.data.datasets[0].backgroundColor = inputGradient;
-      dailyChart.data.datasets[1].data = outputData;
-      dailyChart.data.datasets[1].backgroundColor = outputGradient;
-      dailyChart.data.datasets[1].hidden = hideOutput;
-      dailyChart.update();
-      return;
-    }
-
-    dailyChart = new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels,
-        datasets: [
+    // Copilot's real unit is credits, not tokens — a dedicated single-line
+    // series instead of trying to force it into the two-line token chart.
+    const isCopilot = source === 'copilot';
+    const datasets = isCopilot
+      ? [
           {
-            label: 'Input Tokens',
-            data: inputData,
+            label: 'Credits',
+            data: dailySeries.map((p) => p.nanoAiu / 1e9),
             tension: 0.4,
             fill: true,
-            backgroundColor: inputGradient,
+            backgroundColor: makeGradient(ctx, canvas, '88, 166, 255'),
+            borderColor: 'rgba(88, 166, 255, 1)',
+          },
+        ]
+      : [
+          {
+            label: 'Input Tokens',
+            data: dailySeries.map((p) => p.inputTokens),
+            tension: 0.4,
+            fill: true,
+            backgroundColor: makeGradient(ctx, canvas, '88, 166, 255'),
             borderColor: 'rgba(88, 166, 255, 1)',
           },
           {
             label: 'Output Tokens',
-            data: outputData,
+            data: dailySeries.map((p) => p.outputTokens),
             tension: 0.4,
             fill: true,
-            backgroundColor: outputGradient,
+            backgroundColor: makeGradient(ctx, canvas, '163, 113, 247'),
             borderColor: 'rgba(163, 113, 247, 1)',
-            hidden: hideOutput,
           },
-        ],
-      },
+        ];
+
+    // Dataset count/shape differs between credits mode and tokens mode, so
+    // an in-place update (mutating an existing chart's datasets) can't
+    // safely handle a source toggle — rebuild the chart each render instead.
+    if (dailyChart) {
+      dailyChart.destroy();
+    }
+    dailyChart = new Chart(ctx, {
+      type: 'line',
+      data: { labels, datasets },
       options: {
         animation: FLUID_ANIMATION,
         maintainAspectRatio: false,
@@ -217,42 +223,52 @@
     return `${sign}${n.toFixed(digits)}%`;
   }
 
-  function renderSkillUsageList(skillUsage) {
+  function renderSkillUsageList(skillUsage, source) {
     const el = document.getElementById('skillUsageList');
     if (!skillUsage || skillUsage.length === 0) {
       el.innerHTML = '<p>No skill invocations in the current selection.</p>';
       return;
     }
+    const isCopilotOnly = source === 'copilot';
     el.innerHTML = skillUsage
       .map((s) => {
         const deltaLabel =
           s.avgTurnTokensVsBaselinePct === undefined
             ? '<span class="skill-baseline-na">no baseline turns to compare</span>'
             : `<span class="${s.avgTurnTokensVsBaselinePct <= 0 ? 'skill-delta-good' : 'skill-delta-bad'}">${fmtSigned(s.avgTurnTokensVsBaselinePct, 0)} tokens/turn vs. no-skill baseline</span>`;
+        const headerValue = isCopilotOnly ? fmtCredits(s.nanoAiu) : fmtUsd(s.costUsd);
+        const pctLabel = isCopilotOnly ? '% of Credits' : '% of API-Equiv. Cost';
+        const pctValue = isCopilotOnly ? s.pctOfTotalCredits : s.pctOfTotalCost;
+        // "All" mixes Claude Code ($) and Copilot (credits) turns under the
+        // same skill name — surface the credits portion instead of dropping it.
+        const mixedCreditsNote =
+          source === 'all' && s.nanoAiu > 0 ? `<div class="pricing-note">Copilot portion: ${fmtCredits(s.nanoAiu)}</div>` : '';
         return `
           <div class="skill-usage-row">
             <div class="skill-header">
               <span class="skill-name">${s.skill}</span>
-              <span class="skill-cost">${fmtUsd(s.costUsd)}</span>
+              <span class="skill-cost">${headerValue}</span>
             </div>
             <div class="skill-stats">
               <div class="stat"><span class="stat-label">Invocations</span><span class="stat-value">${fmt(s.invocations)}</span></div>
               <div class="stat"><span class="stat-label">Input Tokens</span><span class="stat-value">${fmt(s.inputTokens)}</span></div>
               <div class="stat"><span class="stat-label">Output Tokens</span><span class="stat-value">${fmt(s.outputTokens)}</span></div>
-              <div class="stat"><span class="stat-label">% of API-Equiv. Cost</span><span class="stat-value">${s.pctOfTotalCost === undefined ? '—' : s.pctOfTotalCost.toFixed(1) + '%'}</span></div>
+              <div class="stat"><span class="stat-label">${pctLabel}</span><span class="stat-value">${pctValue === undefined ? '—' : pctValue.toFixed(1) + '%'}</span></div>
             </div>
             <div class="skill-delta">${deltaLabel}</div>
+            ${mixedCreditsNote}
           </div>`;
       })
       .join('');
   }
 
-  function renderWorkspaceList(byWorkspace) {
+  function renderWorkspaceList(byWorkspace, source) {
     const el = document.getElementById('workspaceList');
     if (byWorkspace.length === 0) {
       el.innerHTML = '<p>No usage in the current selection.</p>';
       return;
     }
+    const isCopilotOnly = source === 'copilot';
     const sorted = [...byWorkspace].sort(
       (a, b) => b.inputTokens + b.outputTokens - (a.inputTokens + a.outputTokens)
     );
@@ -261,17 +277,23 @@
       .map((g) => {
         const total = g.inputTokens + g.outputTokens;
         const pct = Math.round((total / grandTotal) * 100);
+        const headerRight = isCopilotOnly ? fmtCredits(g.nanoAiu) : `${fmt(total)} tokens (${pct}%)`;
+        // "All" mixes Claude Code and Copilot usage under one workspace name
+        // — surface the credits portion instead of silently dropping it.
+        const mixedCreditsNote =
+          source === 'all' && g.nanoAiu > 0 ? `<span>Copilot: ${fmtCredits(g.nanoAiu)}</span>` : '';
         return `
           <div class="workspace-row">
             <div class="workspace-header">
               <span class="workspace-name">${g.key}</span>
-              <span class="workspace-total">${fmt(total)} tokens (${pct}%)</span>
+              <span class="workspace-total">${headerRight}</span>
             </div>
             <div class="workspace-bar-track"><div class="workspace-bar-fill" style="width:${pct}%"></div></div>
             <div class="workspace-stats">
               <span>Input ${fmt(g.inputTokens)}</span>
               <span>Output ${fmt(g.outputTokens)}</span>
               <span>Messages ${fmt(g.eventCount)}</span>
+              ${mixedCreditsNote}
             </div>
           </div>`;
       })
@@ -283,8 +305,8 @@
     renderCostComposition(data.costBreakdown, data.source);
     renderDailyChart(data.dailySeries, data.source);
     renderModelUsageList(data.byModel, data.source);
-    renderWorkspaceList(data.byWorkspace);
-    renderSkillUsageList(data.skillUsage);
+    renderWorkspaceList(data.byWorkspace, data.source);
+    renderSkillUsageList(data.skillUsage, data.source);
   }
 
   document.getElementById('rangeToggle').addEventListener('click', (e) => {

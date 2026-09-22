@@ -26,6 +26,7 @@ function makeDb(): any {
       output_tokens INTEGER,
       cache_read_tokens INTEGER,
       cache_write_tokens INTEGER,
+      reasoning_tokens INTEGER,
       total_nano_aiu INTEGER,
       request_multiplier REAL,
       created_at TEXT
@@ -78,6 +79,20 @@ describe('readCopilotEvents', () => {
       },
     ]);
     expect(result.cursor).toEqual({ lastId: 1 });
+  });
+
+  it('folds reasoning_tokens into outputTokens, since it is separately-billed generation output', () => {
+    const db = makeDb();
+    db.prepare('INSERT INTO sessions (id, cwd) VALUES (?, ?)').run('s1', 'C:\\DEV\\ws1');
+    db.prepare(
+      `INSERT INTO assistant_usage_events
+        (session_id, model, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, reasoning_tokens, total_nano_aiu, request_multiplier, created_at)
+       VALUES ('s1', 'gpt-5-mini', 17022, 1578, 0, 0, 960, 741150000, 1, '2026-09-07T11:52:50.537Z')`
+    ).run();
+    db.close();
+
+    const result = readCopilotEvents(dbPath, { lastId: 0 });
+    expect(result.events[0].outputTokens).toBe(1578 + 960);
   });
 
   it('only returns rows with id greater than the cursor', () => {
