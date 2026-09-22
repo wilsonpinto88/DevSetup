@@ -165,6 +165,59 @@ describe('readCopilotEvents', () => {
     expect(result.events[0].premiumRequests).toBe(0);
   });
 
+  it('tags events with skillsUsed from <skill-context> turns that occurred before them in the same session', () => {
+    const db = makeDb();
+    db.exec(`
+      CREATE TABLE turns (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id TEXT,
+        turn_index INTEGER,
+        user_message TEXT,
+        assistant_response TEXT,
+        timestamp TEXT
+      );
+    `);
+    db.prepare('INSERT INTO sessions (id, cwd) VALUES (?, ?)').run('s1', 'C:\\DEV\\ws1');
+    db.prepare(
+      'INSERT INTO turns (session_id, turn_index, user_message, timestamp) VALUES (?, ?, ?, ?)'
+    ).run('s1', 0, 'have a bug', '2026-09-07T11:52:00.000Z');
+    db.prepare(
+      'INSERT INTO turns (session_id, turn_index, user_message, timestamp) VALUES (?, ?, ?, ?)'
+    ).run('s1', 1, '<skill-context name="caveman">\nBody...\n</skill-context>', '2026-09-07T11:52:10.000Z');
+    db.prepare(
+      'INSERT INTO turns (session_id, turn_index, user_message, timestamp) VALUES (?, ?, ?, ?)'
+    ).run('s1', 2, 'thanks', '2026-09-07T11:53:00.000Z');
+    const insert = db.prepare(
+      `INSERT INTO assistant_usage_events
+        (session_id, model, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, total_nano_aiu, request_multiplier, created_at)
+       VALUES ('s1', 'claude-sonnet-5', ?, ?, 0, 0, 1000, 1, ?)`
+    );
+    insert.run(5, 5, '2026-09-07T11:52:05.000Z'); // before the skill turn -> no tag
+    insert.run(10, 20, '2026-09-07T11:52:15.000Z'); // inside the skill's turn window -> tagged
+    db.close();
+
+    const result = readCopilotEvents(dbPath, { lastId: 0 });
+    const before = result.events.find((e) => e.timestamp === '2026-09-07T11:52:05.000Z');
+    const during = result.events.find((e) => e.timestamp === '2026-09-07T11:52:15.000Z');
+    expect(before?.skillsUsed).toBeUndefined();
+    expect(during?.skillsUsed).toEqual(['caveman']);
+  });
+
+  it('omits skillsUsed entirely when the db has no turns table (older schema)', () => {
+    const db = makeDb();
+    db.prepare('INSERT INTO sessions (id, cwd) VALUES (?, ?)').run('s1', 'C:\\DEV\\ws1');
+    db.prepare(
+      `INSERT INTO assistant_usage_events
+        (session_id, model, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, total_nano_aiu, request_multiplier, created_at)
+       VALUES ('s1', 'claude-sonnet-5', 5, 5, 0, 0, 1000, 1, '2026-09-07T11:52:05.000Z')`
+    ).run();
+    db.close();
+
+    const result = readCopilotEvents(dbPath, { lastId: 0 });
+    expect(result.events[0].skillsUsed).toBeUndefined();
+    expect(result.error).toBeUndefined();
+  });
+
   it('falls back to unknown model and empty workspace when session/model data is missing', () => {
     const db = makeDb();
     db.prepare(

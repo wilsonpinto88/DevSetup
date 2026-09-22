@@ -136,12 +136,19 @@ describe('computeDailySeries', () => {
 });
 
 describe('computeSkillUsage', () => {
-  it('ignores Copilot events and turns with no skill invoked', () => {
-    const events = [
-      event({ skillsUsed: undefined }),
-      event({ source: 'copilot', skillsUsed: ['caveman'] as any }),
-    ];
+  it('ignores turns with no skill invoked', () => {
+    const events = [event({ skillsUsed: undefined })];
     expect(computeSkillUsage(events)).toEqual([]);
+  });
+
+  it('includes Copilot events tagged with skillsUsed, not just Claude Code', () => {
+    const events = [
+      event({ source: 'copilot', skillsUsed: ['caveman'], inputTokens: 10, outputTokens: 5 }),
+    ];
+    const usage = computeSkillUsage(events);
+    expect(usage).toHaveLength(1);
+    expect(usage[0].skill).toBe('caveman');
+    expect(usage[0].invocations).toBe(1);
   });
 
   it('counts invocations and sums tokens/cost per skill', () => {

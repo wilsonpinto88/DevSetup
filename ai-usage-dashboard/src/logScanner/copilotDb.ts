@@ -13,6 +13,65 @@ export interface CopilotDbResult {
   error?: string;
 }
 
+interface TurnRow {
+  session_id: string;
+  timestamp: string;
+  user_message: string | null;
+}
+
+interface SkillWindow {
+  startMs: number;
+  skills: string[];
+}
+
+const SKILL_CONTEXT_RE = /<skill-context name="([^"]+)">/g;
+
+// The Copilot CLI has no dedicated "skill invocation" column/table — but when
+// a skill is loaded, its content gets injected as a synthetic user turn
+// (`<skill-context name="...">...`) right before the assistant turn that
+// actually uses it. That's the same signal this CLI's own transcript uses,
+// so it's parsed the same way here: per session, build ordered windows keyed
+// by turn timestamp, then tag each usage-event row with whichever window's
+// skills are in effect at that row's created_at.
+function loadSkillWindows(db: any): Map<string, SkillWindow[]> {
+  let rows: TurnRow[];
+  try {
+    rows = db.prepare(`SELECT session_id, timestamp, user_message FROM turns ORDER BY session_id, turn_index`).all() as TurnRow[];
+  } catch {
+    // Older schemas / DBs without a turns table simply get no skill tagging.
+    return new Map();
+  }
+  const bySession = new Map<string, SkillWindow[]>();
+  for (const row of rows) {
+    const skills: string[] = [];
+    if (row.user_message) {
+      SKILL_CONTEXT_RE.lastIndex = 0;
+      let m: RegExpExecArray | null;
+      while ((m = SKILL_CONTEXT_RE.exec(row.user_message))) {
+        skills.push(m[1]);
+      }
+    }
+    const list = bySession.get(row.session_id) ?? [];
+    list.push({ startMs: new Date(row.timestamp).getTime(), skills });
+    bySession.set(row.session_id, list);
+  }
+  return bySession;
+}
+
+function skillsAt(windows: SkillWindow[] | undefined, ts: number): string[] | undefined {
+  if (!windows) {
+    return undefined;
+  }
+  let match: string[] | undefined;
+  for (const w of windows) {
+    if (w.startMs > ts) {
+      break;
+    }
+    match = w.skills;
+  }
+  return match && match.length > 0 ? match : undefined;
+}
+
 interface AssistantUsageRow {
   id: number;
   session_id: string;
@@ -62,6 +121,8 @@ export function readCopilotEvents(dbPath: string, cursor: CopilotDbCursor): Copi
       )
       .all(cursor.lastId) as AssistantUsageRow[];
 
+    const skillWindows = loadSkillWindows(db);
+
     // The Copilot CLI's telemetry writer sometimes logs the same call twice
     // with an identical payload (a retry/replay) — same session, timestamp,
     // model, and token counts, only `id` differs. Left undeduped, these
@@ -83,6 +144,7 @@ export function readCopilotEvents(dbPath: string, cursor: CopilotDbCursor): Copi
       // counting that nanoAiu would overstate real AI-unit consumption.
       const multiplier = row.request_multiplier;
       const isBilled = multiplier !== null && multiplier !== 0;
+      const skillsUsed = skillsAt(skillWindows.get(row.session_id), new Date(row.created_at).getTime());
 
       events.push({
         source: 'copilot',
@@ -96,6 +158,7 @@ export function readCopilotEvents(dbPath: string, cursor: CopilotDbCursor): Copi
         cacheWriteTokens: row.cache_write_tokens ?? 0,
         nanoAiu: isBilled ? row.total_nano_aiu ?? 0 : 0,
         premiumRequests: multiplier ?? 0,
+        ...(skillsUsed ? { skillsUsed } : {}),
       });
     }
 

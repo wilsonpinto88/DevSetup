@@ -193,14 +193,16 @@ function turnTokenWeight(e: UsageEvent): number {
 }
 
 export function computeSkillUsage(events: UsageEvent[]): SkillUsage[] {
-  const claudeEvents = events.filter((e) => e.source === 'claude-code');
-  const baselineTurns = claudeEvents.filter((e) => !e.skillsUsed || e.skillsUsed.length === 0);
+  // No longer Claude-only: Copilot events get skillsUsed too (see copilotDb.ts's
+  // <skill-context>-turn window matching), so both sources feed the same
+  // baseline/cost aggregation here.
+  const baselineTurns = events.filter((e) => !e.skillsUsed || e.skillsUsed.length === 0);
   const baselineAvgTokens =
     baselineTurns.length > 0
       ? baselineTurns.reduce((sum, e) => sum + turnTokenWeight(e), 0) / baselineTurns.length
       : undefined;
 
-  const totalCostAll = claudeEvents.reduce((sum, e) => {
+  const totalCostAll = events.reduce((sum, e) => {
     const cost = computeCost(e.inputTokens, e.outputTokens, e.cacheWriteTokens, e.cacheReadTokens, e.model);
     return cost !== undefined ? sum + cost : sum;
   }, 0);
@@ -214,7 +216,7 @@ export function computeSkillUsage(events: UsageEvent[]): SkillUsage[] {
     turnTokensSum: number;
   }
   const bySkill = new Map<string, Accum>();
-  for (const e of claudeEvents) {
+  for (const e of events) {
     if (!e.skillsUsed || e.skillsUsed.length === 0) {
       continue;
     }

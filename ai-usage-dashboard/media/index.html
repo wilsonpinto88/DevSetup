@@ -54,8 +54,10 @@
     <section class="panel" id="skillUsageSection">
       <h2>Skills Used</h2>
       <p class="skill-usage-note">
-        Claude Code only. Cost/tokens are directly measured; the vs-baseline figure is a rough proxy
+        Cost/tokens are directly measured; the vs-baseline figure is a rough proxy
         (avg tokens on this skill's turns vs. turns with no skill), not a measured saving.
+        Copilot skill attribution is inferred from &lt;skill-context&gt; turns in the local
+        session log (best-effort, not an official Copilot record).
       </p>
       <div id="skillUsageList" class="skill-usage-list"></div>
     </section>

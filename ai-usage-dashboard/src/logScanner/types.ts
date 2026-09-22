@@ -10,5 +10,5 @@ export interface UsageEvent {
   cacheWriteTokens: number;
   nanoAiu?: number;        // Copilot only
   premiumRequests?: number; // Copilot only
-  skillsUsed?: string[];    // Claude Code only — Skill tool invocations on this turn
+  skillsUsed?: string[];    // Skill invocations attributed to this turn (both sources)
 }
