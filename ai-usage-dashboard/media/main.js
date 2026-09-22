@@ -75,16 +75,43 @@
       .join('');
   }
 
-  function renderCostComposition(costBreakdown, source) {
+  function renderCostComposition(costBreakdown, source, totals) {
     const barEl = document.getElementById('costBar');
     const legendEl = document.getElementById('costLegend');
-    // GitHub reports one total_nano_aiu per call, with no input/output/cache
-    // sub-breakdown — there's no equivalent composition to show for Copilot.
+    const titleEl = document.getElementById('costCompositionTitle');
+    const noteEl = document.getElementById('costCompositionNote');
+
+    // GitHub reports one total_nano_aiu figure per call, with no per-component
+    // (input/output/cache) credit split — so a $/credit composition isn't
+    // possible for Copilot. Fall back to the same breakdown in token terms,
+    // which the CLI does report per-call, instead of showing nothing.
     if (source === 'copilot') {
-      barEl.innerHTML = '';
-      legendEl.innerHTML = '<span>Not available for Copilot — GitHub reports one total credit figure per call, not a per-component breakdown.</span>';
+      titleEl.textContent = 'Token Composition';
+      noteEl.textContent =
+        'Credit composition not available — GitHub reports one total credit figure per call, not a per-component breakdown. Showing token share instead.';
+      const segments = [
+        { label: 'Input Tokens', value: totals.totalInputTokens, color: '#58a6ff' },
+        { label: 'Output Tokens', value: totals.totalOutputTokens, color: '#e3b341' },
+        { label: 'Input Cache (Miss)', value: totals.totalCacheWriteTokens, color: '#a371f7' },
+        { label: 'Input Cache (Hit)', value: totals.totalCacheReadTokens, color: '#3fb950' },
+      ];
+      const total = segments.reduce((sum, s) => sum + s.value, 0);
+      barEl.innerHTML = segments
+        .map((s) => {
+          const pct = total > 0 ? (s.value / total) * 100 : 0;
+          return `<div class="segment" style="width:${pct}%;background:${s.color}"></div>`;
+        })
+        .join('');
+      legendEl.innerHTML = segments
+        .map((s) => {
+          const pct = total > 0 ? Math.round((s.value / total) * 100) : 0;
+          return `<span><span class="swatch" style="background:${s.color}"></span>${s.label} ${fmt(s.value)} (${pct}%)</span>`;
+        })
+        .join('');
       return;
     }
+    titleEl.textContent = 'API-Equivalent Cost Composition';
+    noteEl.textContent = '';
     if (!costBreakdown) {
       barEl.innerHTML = '';
       legendEl.innerHTML = '<span>No priced models in the current selection.</span>';
@@ -302,7 +329,7 @@
 
   function render(data) {
     renderStatTiles(data.totals, data.totalCostUsd, data.allowance, data.source);
-    renderCostComposition(data.costBreakdown, data.source);
+    renderCostComposition(data.costBreakdown, data.source, data.totals);
     renderDailyChart(data.dailySeries, data.source);
     renderModelUsageList(data.byModel, data.source);
     renderWorkspaceList(data.byWorkspace, data.source);
