@@ -15,6 +15,11 @@
     return n === undefined || n === null ? '—' : `$${n.toFixed(2)}`;
   }
 
+  // total_nano_aiu is stored as nano (1e9 = 1 credit) — divide down for display.
+  function fmtCredits(nanoAiu) {
+    return `${new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }).format(nanoAiu / 1e9)} credits`;
+  }
+
   function shortDateLabel(bucket) {
     // bucket is ISO 'YYYY-MM-DD' -> 'MM-DD'
     return bucket.length >= 10 ? bucket.slice(5, 10) : bucket;
@@ -110,9 +115,20 @@
       .map((m) => {
         const cacheTotal = m.cacheReadTokens + m.cacheWriteTokens;
         const hitRate = cacheTotal > 0 ? Math.round((m.cacheReadTokens / cacheTotal) * 100) : 0;
+        // For the Copilot tab, real GitHub-billed credits (nanoAiu, from
+        // session-store.db) are a more accurate figure than the Anthropic
+        // per-token $ estimate — and unlike that estimate, credits are known
+        // for every model, not just the ones with a confirmed public rate.
+        const headerValue = source === 'copilot' ? fmtCredits(m.nanoAiu) : fmtUsd(m.costUsd);
         const pricingNote =
-          m.costUsd === undefined
+          source !== 'copilot' && m.costUsd === undefined
             ? '<div class="pricing-note">No confirmed pricing rate for this model — cost omitted from totals.</div>'
+            : '';
+        // "All" mixes Claude Code (priced in $) and Copilot (priced in credits)
+        // usage of the same model name — surface both instead of only $.
+        const mixedCreditsNote =
+          source === 'all' && m.nanoAiu > 0
+            ? `<div class="pricing-note">Copilot portion: ${fmtCredits(m.nanoAiu)}</div>`
             : '';
         const stats = [
           { label: 'Messages', value: fmt(m.eventCount) },
@@ -127,7 +143,7 @@
           <div class="model-usage-row">
             <div class="model-header">
               <span class="model-name">${m.key}</span>
-              <span class="model-cost">${fmtUsd(m.costUsd)}</span>
+              <span class="model-cost">${headerValue}</span>
             </div>
             <div class="model-stats">
               ${stats
@@ -135,6 +151,7 @@
                 .join('')}
             </div>
             ${pricingNote}
+            ${mixedCreditsNote}
           </div>`;
       })
       .join('');

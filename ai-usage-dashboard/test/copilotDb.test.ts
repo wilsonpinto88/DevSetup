@@ -133,7 +133,7 @@ describe('readCopilotEvents', () => {
     expect(result.events).toHaveLength(2);
   });
 
-  it('zeroes nanoAiu but keeps tokens when request_multiplier is 0 (not billed by GitHub)', () => {
+  it('keeps nanoAiu even when request_multiplier is 0 — verified against GitHub\'s real Credits panel: excluding these rows undercounted by ~123 credits/month, matching the sum of exactly these rows', () => {
     const db = makeDb();
     db.prepare('INSERT INTO sessions (id, cwd) VALUES (?, ?)').run('s1', 'C:\\DEV\\ws1');
     db.prepare(
@@ -144,13 +144,13 @@ describe('readCopilotEvents', () => {
     db.close();
 
     const result = readCopilotEvents(dbPath, { lastId: 0 });
-    expect(result.events[0].nanoAiu).toBe(0);
+    expect(result.events[0].nanoAiu).toBe(500);
     expect(result.events[0].premiumRequests).toBe(0);
     expect(result.events[0].inputTokens).toBe(10);
     expect(result.events[0].outputTokens).toBe(20);
   });
 
-  it('zeroes nanoAiu when request_multiplier is null', () => {
+  it('keeps nanoAiu when request_multiplier is null, but reports premiumRequests as 0', () => {
     const db = makeDb();
     db.prepare('INSERT INTO sessions (id, cwd) VALUES (?, ?)').run('s1', 'C:\\DEV\\ws1');
     db.prepare(
@@ -161,7 +161,7 @@ describe('readCopilotEvents', () => {
     db.close();
 
     const result = readCopilotEvents(dbPath, { lastId: 0 });
-    expect(result.events[0].nanoAiu).toBe(0);
+    expect(result.events[0].nanoAiu).toBe(500);
     expect(result.events[0].premiumRequests).toBe(0);
   });
 

@@ -139,11 +139,14 @@ export function readCopilotEvents(dbPath: string, cursor: CopilotDbCursor): Copi
       }
       seenKeys.add(dedupeKey);
 
-      // request_multiplier of 0 (or null) means GitHub doesn't bill this call
-      // as a premium request, but total_nano_aiu is still logged for it —
-      // counting that nanoAiu would overstate real AI-unit consumption.
+      // request_multiplier is GitHub's *legacy premium-request* multiplier
+      // (a separate, older quota concept) — it does NOT gate whether
+      // total_nano_aiu (the real, current AI-credit unit) gets billed.
+      // Verified empirically: excluding rows where multiplier is 0/null
+      // undercounted the month's credits by exactly the sum of those rows'
+      // nanoAiu vs. GitHub's own Credits panel — so nanoAiu is kept as-is
+      // regardless of multiplier; only premiumRequests reflects it.
       const multiplier = row.request_multiplier;
-      const isBilled = multiplier !== null && multiplier !== 0;
       const skillsUsed = skillsAt(skillWindows.get(row.session_id), new Date(row.created_at).getTime());
 
       events.push({
@@ -156,7 +159,7 @@ export function readCopilotEvents(dbPath: string, cursor: CopilotDbCursor): Copi
         outputTokens: row.output_tokens ?? 0,
         cacheReadTokens: row.cache_read_tokens ?? 0,
         cacheWriteTokens: row.cache_write_tokens ?? 0,
-        nanoAiu: isBilled ? row.total_nano_aiu ?? 0 : 0,
+        nanoAiu: row.total_nano_aiu ?? 0,
         premiumRequests: multiplier ?? 0,
         ...(skillsUsed ? { skillsUsed } : {}),
       });
