@@ -98,6 +98,73 @@ describe('readCopilotEvents', () => {
     expect(result.cursor).toEqual({ lastId: 3 });
   });
 
+  it('dedupes exact-duplicate retry rows (same session/timestamp/model/tokens, different id)', () => {
+    const db = makeDb();
+    db.prepare('INSERT INTO sessions (id, cwd) VALUES (?, ?)').run('s1', 'C:\\DEV\\ws1');
+    const insert = db.prepare(
+      `INSERT INTO assistant_usage_events
+        (session_id, model, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, total_nano_aiu, request_multiplier, created_at)
+       VALUES ('s1', 'claude-sonnet-5', 10, 20, 0, 0, 1000, 1, '2026-09-07T11:52:50.537Z')`
+    );
+    insert.run();
+    insert.run(); // exact-duplicate retry
+    db.close();
+
+    const result = readCopilotEvents(dbPath, { lastId: 0 });
+    expect(result.events).toHaveLength(1);
+    expect(result.events[0].nanoAiu).toBe(1000);
+    // Cursor still advances past the duplicate row's id so it's not re-scanned.
+    expect(result.cursor).toEqual({ lastId: 2 });
+  });
+
+  it('does not dedupe distinct calls that happen to share model/tokens', () => {
+    const db = makeDb();
+    db.prepare('INSERT INTO sessions (id, cwd) VALUES (?, ?)').run('s1', 'C:\\DEV\\ws1');
+    const insert = db.prepare(
+      `INSERT INTO assistant_usage_events
+        (session_id, model, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, total_nano_aiu, request_multiplier, created_at)
+       VALUES ('s1', 'claude-sonnet-5', 10, 20, 0, 0, 1000, 1, ?)`
+    );
+    insert.run('2026-09-07T11:52:50.537Z');
+    insert.run('2026-09-07T11:53:12.000Z'); // different timestamp -> real distinct call
+    db.close();
+
+    const result = readCopilotEvents(dbPath, { lastId: 0 });
+    expect(result.events).toHaveLength(2);
+  });
+
+  it('zeroes nanoAiu but keeps tokens when request_multiplier is 0 (not billed by GitHub)', () => {
+    const db = makeDb();
+    db.prepare('INSERT INTO sessions (id, cwd) VALUES (?, ?)').run('s1', 'C:\\DEV\\ws1');
+    db.prepare(
+      `INSERT INTO assistant_usage_events
+        (session_id, model, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, total_nano_aiu, request_multiplier, created_at)
+       VALUES ('s1', 'gpt-5.4-mini', 10, 20, 0, 0, 500, 0, '2026-09-07T11:52:50.537Z')`
+    ).run();
+    db.close();
+
+    const result = readCopilotEvents(dbPath, { lastId: 0 });
+    expect(result.events[0].nanoAiu).toBe(0);
+    expect(result.events[0].premiumRequests).toBe(0);
+    expect(result.events[0].inputTokens).toBe(10);
+    expect(result.events[0].outputTokens).toBe(20);
+  });
+
+  it('zeroes nanoAiu when request_multiplier is null', () => {
+    const db = makeDb();
+    db.prepare('INSERT INTO sessions (id, cwd) VALUES (?, ?)').run('s1', 'C:\\DEV\\ws1');
+    db.prepare(
+      `INSERT INTO assistant_usage_events
+        (session_id, model, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, total_nano_aiu, request_multiplier, created_at)
+       VALUES ('s1', 'gpt-5.4-mini', 10, 20, 0, 0, 500, NULL, '2026-09-07T11:52:50.537Z')`
+    ).run();
+    db.close();
+
+    const result = readCopilotEvents(dbPath, { lastId: 0 });
+    expect(result.events[0].nanoAiu).toBe(0);
+    expect(result.events[0].premiumRequests).toBe(0);
+  });
+
   it('falls back to unknown model and empty workspace when session/model data is missing', () => {
     const db = makeDb();
     db.prepare(

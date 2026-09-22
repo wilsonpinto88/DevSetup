@@ -62,10 +62,29 @@ export function readCopilotEvents(dbPath: string, cursor: CopilotDbCursor): Copi
       )
       .all(cursor.lastId) as AssistantUsageRow[];
 
+    // The Copilot CLI's telemetry writer sometimes logs the same call twice
+    // with an identical payload (a retry/replay) — same session, timestamp,
+    // model, and token counts, only `id` differs. Left undeduped, these
+    // double-count nanoAiu/tokens. `id` still advances the cursor past every
+    // row seen (including the duplicate) so it isn't re-read next scan.
     let maxId = cursor.lastId;
-    const events: UsageEvent[] = rows.map((row) => {
+    const seenKeys = new Set<string>();
+    const events: UsageEvent[] = [];
+    for (const row of rows) {
       maxId = Math.max(maxId, row.id);
-      return {
+      const dedupeKey = `${row.session_id}|${row.created_at}|${row.model}|${row.input_tokens}|${row.output_tokens}|${row.total_nano_aiu}`;
+      if (seenKeys.has(dedupeKey)) {
+        continue;
+      }
+      seenKeys.add(dedupeKey);
+
+      // request_multiplier of 0 (or null) means GitHub doesn't bill this call
+      // as a premium request, but total_nano_aiu is still logged for it —
+      // counting that nanoAiu would overstate real AI-unit consumption.
+      const multiplier = row.request_multiplier;
+      const isBilled = multiplier !== null && multiplier !== 0;
+
+      events.push({
         source: 'copilot',
         sessionId: row.session_id,
         timestamp: row.created_at,
@@ -75,10 +94,10 @@ export function readCopilotEvents(dbPath: string, cursor: CopilotDbCursor): Copi
         outputTokens: row.output_tokens ?? 0,
         cacheReadTokens: row.cache_read_tokens ?? 0,
         cacheWriteTokens: row.cache_write_tokens ?? 0,
-        nanoAiu: row.total_nano_aiu ?? 0,
-        premiumRequests: row.request_multiplier ?? 0,
-      };
-    });
+        nanoAiu: isBilled ? row.total_nano_aiu ?? 0 : 0,
+        premiumRequests: multiplier ?? 0,
+      });
+    }
 
     return { events, cursor: { lastId: maxId } };
   } catch (e) {
