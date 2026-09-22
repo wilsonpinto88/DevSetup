@@ -37,6 +37,11 @@ Other commands:
 - **Usage by Workspace** — which projects you've used AI in
 - **Skills Used** — Claude Code only; which skills (via the `Skill` tool) you invoke most, their token/cost share, and a rough "tokens per turn vs. no-skill turns" signal (a proxy, not a measured saving)
 
+## Fixed issues
+
+- **Copilot totals were previously inflated (fixed).** The Copilot CLI's telemetry writer sometimes logs the same call twice with an identical payload (a retry) — confirmed via direct SQL against `session-store.db`, ~300 credits' worth of pure double-counting in one real month of data. Duplicate rows (same session/timestamp/model/token counts) are now deduped, keeping only the first. Separately, calls with `request_multiplier` of `0`/`null` (not billed by GitHub as premium) were still contributing to the AI-units total — those are now excluded from that count, though their token counts are still kept since real usage happened.
+  **If you installed an earlier build**: run **AI Usage: Reset Cache & Rescan** once — your already-scanned data predates this fix and won't correct itself on a normal refresh.
+
 ## Known limitations — please read before giving feedback
 
 - **"API-Equivalent Cost" is not a real bill.** It's Anthropic's public per-token API pricing applied to your token counts. If you're on a flat-fee plan (e.g. Claude Pro), you are not actually being charged this — it's a comparison figure only.
