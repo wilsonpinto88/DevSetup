@@ -40,8 +40,8 @@ Other commands:
 ## Known limitations — please read before giving feedback
 
 - **"API-Equivalent Cost" is not a real bill.** It's Anthropic's public per-token API pricing applied to your token counts. If you're on a flat-fee plan (e.g. Claude Pro), you are not actually being charged this — it's a comparison figure only.
-- **Copilot's cost estimate reuses the same Anthropic pricing table**, not Copilot's real premium-request/billing model — treat it as an approximation.
-- **Copilot allowance % is manual-entry only** right now (`aiUsage.copilotMonthlyAllowance` setting) — the real GitHub Copilot allowance endpoint hasn't been wired up yet.
+- **Copilot doesn't bill per-token at all** — it bills in premium requests, weighted by a per-model multiplier (e.g. Sonnet ~9x, Opus ~27x, small models ~0.3x), nothing to do with token counts. Copilot models have no entry in the Anthropic pricing table, so their cost tile correctly shows `—` rather than a wrong dollar figure. Real usage is tracked as **Copilot Premium Reqs** (a separate stat tile) instead.
+- **Copilot allowance % is manual-entry only** (`aiUsage.copilotMonthlyAllowance` setting for the total). There's no public API for a personal GitHub account's real billed usage — only org/enterprise admin APIs exist, and the authoritative source is GitHub's own Settings → Billing → Copilot page. The "used" side of the % is your real local premium-request count, so it moves even without the manual total being exact.
 - **"Skills Used" is Claude Code only.** Copilot has no equivalent structured skill-invocation record in its logs.
 - Only models with a confirmed public pricing rate get a $ figure; others show `—` rather than a guessed number.
 

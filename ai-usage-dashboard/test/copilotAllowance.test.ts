@@ -23,6 +23,16 @@ describe('resolveAllowance', () => {
     expect(result).toEqual({ used: 0, total: 30000, source: 'manual' });
   });
 
+  it('uses the real local premium-request count as "used" in manual mode, when provided', async () => {
+    const result = await resolveAllowance({
+      getGithubToken: async () => undefined,
+      fetchAllowance: vi.fn(),
+      manualAllowance: 30000,
+      manualUsed: 412,
+    });
+    expect(result).toEqual({ used: 412, total: 30000, source: 'manual' });
+  });
+
   it('returns undefined when auto fails and no manual value is set', async () => {
     const result = await resolveAllowance({
       getGithubToken: async () => 'tok',

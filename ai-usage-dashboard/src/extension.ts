@@ -88,6 +88,9 @@ async function doRefreshAndRender(context: vscode.ExtensionContext, range: TimeR
       (copilotError ? ` copilotError=${copilotError}` : '')
   );
 
+  const rangeEvents = filterEventsByRange(events, range);
+  const rangeTotals = computeTotals(rangeEvents);
+
   const manualAllowance = config.get<number | null>('copilotMonthlyAllowance', null);
   const allowance = await resolveAllowance({
     getGithubToken: async () => {
@@ -95,14 +98,15 @@ async function doRefreshAndRender(context: vscode.ExtensionContext, range: TimeR
       return session?.accessToken;
     },
     fetchAllowance: async () => {
-      // Exact endpoint TBD (see spec's Interfaces section) — returning undefined
-      // triggers the manual-allowance fallback until this is filled in.
+      // No public API exists for a personal GitHub account's real billed
+      // premium-request usage (confirmed: only org/enterprise admin APIs
+      // exist) — returning undefined always triggers the manual fallback.
       return undefined;
     },
     manualAllowance: manualAllowance ?? undefined,
+    manualUsed: rangeTotals.totalPremiumRequests,
   });
 
-  const rangeEvents = filterEventsByRange(events, range);
   const byModelRaw = groupByModel(rangeEvents);
   const byModel: ModelUsageEntry[] = byModelRaw.map((g) => ({
     ...g,
@@ -128,7 +132,7 @@ async function doRefreshAndRender(context: vscode.ExtensionContext, range: TimeR
       : undefined;
 
   postDashboardData(context, {
-    totals: computeTotals(rangeEvents),
+    totals: rangeTotals,
     totalCostUsd,
     costBreakdown,
     byModel,

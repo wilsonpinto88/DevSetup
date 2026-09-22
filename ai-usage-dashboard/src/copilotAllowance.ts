@@ -9,6 +9,11 @@ export interface AllowanceFetchDeps {
   getGithubToken: () => Promise<string | undefined>;
   fetchAllowance: (token: string) => Promise<{ used: number; total: number } | undefined>;
   manualAllowance: number | undefined;
+  // Real premium-request count from local logs (totals.totalPremiumRequests),
+  // used as the "used" numerator when there's no auto-fetched value — GitHub
+  // has no public API for a personal account's real billed usage, so this is
+  // the closest local approximation to what the manual allowance is tracking.
+  manualUsed?: number;
 }
 
 export async function resolveAllowance(deps: AllowanceFetchDeps): Promise<AllowanceResult | undefined> {
@@ -24,7 +29,7 @@ export async function resolveAllowance(deps: AllowanceFetchDeps): Promise<Allowa
     }
   }
   if (deps.manualAllowance !== undefined) {
-    return { used: 0, total: deps.manualAllowance, source: 'manual' };
+    return { used: deps.manualUsed ?? 0, total: deps.manualAllowance, source: 'manual' };
   }
   return undefined;
 }
