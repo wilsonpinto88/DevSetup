@@ -24,6 +24,11 @@ than implying full confidence.
    - Read the file back after editing → confirm the change is actually there and correct
      (edits can silently fail to apply or apply to the wrong location).
    - Checked for compile/lint errors (`get_errors`) after non-trivial code changes.
+   - Test quality, not just green: confirm new tests follow `test-driven-development` →
+     Test Quality Rules (no needless mocks, public-API coupling, no logic in tests, bug
+     fixes have a regression test that failed first). A green suite of weak tests is weak
+     evidence. For core logic, mutation or property-based results strengthen it; for UI
+     changes, a Playwright run of the real flow beats unit tests.
 3. **Self-consistency check for ambiguous claims**: if you're not fully sure the evidence
    proves completion, consider it from a second angle before asserting "verified" — e.g.
    "the test passed" is strong evidence; "the code looks correct" is weak evidence and

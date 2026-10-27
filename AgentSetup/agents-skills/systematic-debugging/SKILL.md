@@ -39,7 +39,8 @@ does the evidence actually support? Take the majority.
   clear signal emerges.
 
 ### Phase 4 — Fix with TDD
-Once root cause is confident, write a failing test that reproduces the bug, then fix
+Once root cause is confident, write a failing test that reproduces the bug (through the
+public API, no mocks of the faulty code; confirm it fails with the reported symptom), then fix
 per `test-driven-development`. Confirm the original symptom is gone AND no regression
 was introduced.
 
