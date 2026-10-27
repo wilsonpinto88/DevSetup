@@ -79,6 +79,17 @@ if (Test-Path "$sourceClaude\settings.json") {
     Write-Host "  [SKIP] settings.json not found in backup" -ForegroundColor Red
 }
 
+# settings.json references scripts in .claude/hooks/ (cache-heal, dangerous-command-guard)
+$sourceClaudeHooks = Join-Path $sourceClaude "hooks"
+if (Test-Path $sourceClaudeHooks) {
+    $targetClaudeHooks = Join-Path $targetClaudeDir "hooks"
+    if (-not (Test-Path $targetClaudeHooks)) {
+        New-Item -ItemType Directory -Path $targetClaudeHooks -Force | Out-Null
+    }
+    Copy-Item -Path "$sourceClaudeHooks\*" -Destination $targetClaudeHooks -Recurse -Force
+    Write-Host "  [OK] .claude/hooks/ restored" -ForegroundColor Green
+}
+
 # --- 4. Restore .claude/skills/ ---
 Write-Host "[4/8] Restoring .claude/skills/ ..." -ForegroundColor Yellow
 

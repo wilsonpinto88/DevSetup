@@ -16,6 +16,17 @@
           }
         ]
       }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"C:/nvm4w/nodejs/node.exe\" \"C:/Users/Wilson.Pinto/.claude/hooks/dangerous-command-guard.mjs\""
+          }
+        ]
+      }
     ]
   },
   "statusLine": {
