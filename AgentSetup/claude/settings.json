@@ -3,7 +3,8 @@
     "ENABLE_TOOL_SEARCH": "true",
     "CLAUDE_CODE_NO_FLICKER": "1",
     "CLAUDE_CODE_RATE_LIMIT_ENABLED": "0",
-    "CLAUDE_CODE_CACHE_TTL_MS": "86400000"
+    "CLAUDE_CODE_CACHE_TTL_MS": "86400000",
+    "CLAUDE_CODE_SUBAGENT_MODEL": "haiku"
   },
   "model": "sonnet",
   "hooks": {
@@ -42,19 +43,22 @@
     "caveman": {
       "source": {
         "source": "git",
-        "url": "https://github.com/JuliusBrussee/caveman.git"
+        "url": "https://github.com/JuliusBrussee/caveman.git",
+        "ref": "v3.2.0"
       }
     },
     "context-mode": {
       "source": {
         "source": "git",
-        "url": "https://github.com/mksglu/context-mode.git"
+        "url": "https://github.com/mksglu/context-mode.git",
+        "ref": "v1.0.169"
       }
     },
     "superpowers-optimized": {
       "source": {
         "source": "git",
-        "url": "https://github.com/REPOZY/superpowers-optimized.git"
+        "url": "https://github.com/REPOZY/superpowers-optimized.git",
+        "ref": "v6.10.0"
       }
     }
   },
