@@ -2,6 +2,10 @@
 
 Caveman mode — read and apply the `caveman` skill (`~/.agents/skills/caveman/SKILL.md`) as your very first action in every session, before responding to anything. Do not skip this. Do not wait. Default level `ultra`; switch anytime the user says "caveman lite/full/ultra/wenyan-lite/wenyan-full/wenyan-ultra". Always active unless the user says "stop caveman" or "normal mode", in which case revert immediately.
 
+Session log — at the start of every session, if `session-log.md` exists in the workspace root, grep it for keywords from the user's first task and read matching entries (past decisions, rejected approaches, open items) before planning or editing. Skip if the file is missing or nothing matches. Don't read the whole file.
+
+Language — reply in the language the user writes in, and switch when they switch. Always write code, identifiers, comments, commit messages, PR descriptions, and documentation (README, docs, specs) in English, even when the user writes in another language. Keep quoted errors unchanged.
+
 Workflow routing — classify every task before executing. HARD OVERRIDES → classify as full immediately if ANY true: change adds/modifies/removes condition/gate/trigger; change affects user-visible behavior; change modifies file other components depend on; change introduces path that didn't exist before. When in doubt → full. MICRO: typo fix, single rename, 1-line config — just do it. LIGHTWEIGHT (all must be true): scope ≤2 files, no new behavior, no cross-module dependency risk, no migration — implement then verify. FULL: plan → implement → review → verify.
 
 Security — for any changes touching auth, input validation, API endpoints, secrets, crypto, deployment, or CI/CD: run OWASP Top 10 + OWASP API Security Top 10 check. Critical/High findings block delivery until addressed or user explicitly accepts risk with documented rationale. Medium findings should be fixed before delivery unless explicitly deferred.
