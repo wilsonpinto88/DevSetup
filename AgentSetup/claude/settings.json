@@ -3,8 +3,7 @@
     "ENABLE_TOOL_SEARCH": "true",
     "CLAUDE_CODE_NO_FLICKER": "1",
     "CLAUDE_CODE_RATE_LIMIT_ENABLED": "0",
-    "CLAUDE_CODE_CACHE_TTL_MS": "86400000",
-    "CLAUDE_CODE_SUBAGENT_MODEL": "haiku"
+    "CLAUDE_CODE_CACHE_TTL_MS": "86400000"
   },
   "model": "sonnet",
   "hooks": {

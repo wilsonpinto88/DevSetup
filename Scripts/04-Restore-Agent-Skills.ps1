@@ -90,6 +90,17 @@ if (Test-Path $sourceClaudeHooks) {
     Write-Host "  [OK] .claude/hooks/ restored" -ForegroundColor Green
 }
 
+# User-level subagent overrides (e.g. Explore on haiku)
+$sourceClaudeAgents = Join-Path $sourceClaude "agents"
+if (Test-Path $sourceClaudeAgents) {
+    $targetClaudeAgents = Join-Path $targetClaudeDir "agents"
+    if (-not (Test-Path $targetClaudeAgents)) {
+        New-Item -ItemType Directory -Path $targetClaudeAgents -Force | Out-Null
+    }
+    Copy-Item -Path "$sourceClaudeAgents\*" -Destination $targetClaudeAgents -Recurse -Force
+    Write-Host "  [OK] .claude/agents/ restored" -ForegroundColor Green
+}
+
 # --- 4. Restore .claude/skills/ ---
 Write-Host "[4/8] Restoring .claude/skills/ ..." -ForegroundColor Yellow
 
