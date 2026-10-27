@@ -49,15 +49,13 @@
     "context-mode": {
       "source": {
         "source": "git",
-        "url": "https://github.com/mksglu/context-mode.git",
-        "ref": "v1.0.169"
+        "url": "https://github.com/mksglu/context-mode.git"
       }
     },
     "superpowers-optimized": {
       "source": {
         "source": "git",
-        "url": "https://github.com/REPOZY/superpowers-optimized.git",
-        "ref": "v6.10.0"
+        "url": "https://github.com/REPOZY/superpowers-optimized.git"
       }
     }
   },
