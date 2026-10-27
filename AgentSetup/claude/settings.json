@@ -4,11 +4,24 @@
     "CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING": "1",
     "CLAUDE_CODE_NO_FLICKER": "1",
     "CLAUDE_CODE_RATE_LIMIT_ENABLED": "0",
-    "CLAUDE_CODE_CACHE_TTL_MS": "8,64e+7",
+    "CLAUDE_CODE_CACHE_TTL_MS": "86400000",
     "CLAUDE_CODE_MODEL_PERF": "predictable",
     "CLAUDE_CODE_MIN_TPS": "300",
     "CLAUDE_CODE_NO_NERF": "1",
     "MAX_THINKING_TOKENS": "128000"
+  },
+  "model": "sonnet",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"C:/nvm4w/nodejs/node.exe\" \"C:/Users/Wilson.Pinto/.claude/hooks/context-mode-cache-heal.mjs\""
+          }
+        ]
+      }
+    ]
   },
   "statusLine": {
     "type": "command",
@@ -40,17 +53,12 @@
     }
   },
   "effortLevel": "medium",
-  "hooks": {
-    "SessionStart": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"C:/nvm4w/nodejs/node.exe\" \"C:/Users/Wilson.Pinto/.claude/hooks/context-mode-cache-heal.mjs\""
-          }
-        ]
-      }
-    ]
-  },
-  "model": "sonnet"
+  "modelSettings": {
+    "claude-opus-5-5": {
+      "effortLevel": "high"
+    },
+    "claude-sonnet-5-5": {
+      "effortLevel": "medium"
+    }
+  }
 }
